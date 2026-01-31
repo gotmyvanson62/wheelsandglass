@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import React from "react";
 import SidebarLayout from "@/components/layout/sidebar-layout";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -169,6 +170,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <SpeedInsights />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
