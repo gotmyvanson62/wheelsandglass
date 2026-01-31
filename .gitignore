@@ -54,3 +54,4 @@ drizzle/
 # TypeScript
 *.tsbuildinfo
 .env*.local
+wheels-and-glass-complete/
