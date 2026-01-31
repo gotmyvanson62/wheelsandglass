@@ -1,0 +1,46 @@
+{
+  "name": "wheels-and-glass",
+  "version": "1.0.0",
+  "description": "Express Auto Glass - Professional auto glass repair and replacement management system",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build:shared && npm run build:client",
+    "build:client": "cd client && npx vite build",
+    "build:server": "npm run build --workspace=server",
+    "build:shared": "npm run build --workspace=shared",
+    "build:api": "npx esbuild api/handler.ts --platform=node --bundle --format=cjs --outfile=api/handler.js",
+    "vercel-build": "npm run build",
+    "db:generate": "npm run db:generate --workspace=server",
+    "db:push": "npm run db:push --workspace=server",
+    "db:migrate": "npm run db:migrate --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "drizzle-orm": "^0.29.3",
+    "esbuild": "^0.20.2",
+    "postgres": "^3.4.3",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@vercel/node": "^5.5.28",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "react-simple-maps": "^3.0.0",
+    "vercel": "^50.9.1"
+  }
+}

@@ -1,0 +1,255 @@
+import { Router, Request, Response } from 'express';
+import { storage } from '../storage.js';
+import { verifyQuoSignature, verifyTwilioSignature, verifySquareSignature, captureRawBody } from '../middleware/webhook-verification.middleware.js';
+import { quoSmsService, QuoMessage } from '../services/quo-sms-service.js';
+
+const router = Router();
+
+// ===== QUO (OPENPHONE) WEBHOOKS =====
+
+interface QuoWebhookPayload {
+  id: string;
+  object: 'event';
+  type: 'message.received' | 'message.delivered' | 'message.failed' | 'call.completed' | 'voicemail.received';
+  data: {
+    object: QuoMessage;
+  };
+  createdAt: string;
+  apiVersion: string;
+}
+
+/**
+ * Categorize inbound SMS message content
+ */
+function categorizeMessage(message: string): string {
+  const lower = message.toLowerCase().trim();
+  if (['yes', 'confirm', 'ok', 'okay', 'y'].includes(lower)) return 'confirmation';
+  if (['no', 'cancel', 'stop', 'n'].includes(lower)) return 'cancellation';
+  if (lower.includes('reschedule') || lower.includes('change')) return 'reschedule';
+  if (lower.includes('?')) return 'question';
+  return 'general';
+}
+
+// POST /api/webhooks/quo-sms - Quo (OpenPhone) SMS webhook
+// Apply raw body capture and Quo signature verification
+router.post('/quo-sms', captureRawBody, verifyQuoSignature, async (req: Request, res: Response) => {
+  const correlationId = `quo-${Date.now()}`;
+
+  try {
+    const payload = req.body as QuoWebhookPayload;
+
+    // Log all webhook events
+    console.log(`[Webhook:Quo] [${correlationId}] Event: ${payload.type}`);
+
+    await storage.createActivityLog({
+      type: 'quo_sms_webhook',
+      message: `Quo webhook: ${payload.type}`,
+      details: { correlationId, eventId: payload.id, type: payload.type },
+    });
+
+    // Only process incoming messages
+    if (payload.type !== 'message.received') {
+      return res.json({ success: true, message: 'Event acknowledged', correlationId });
+    }
+
+    const message = payload.data.object;
+    const phoneNumber = message.from;
+    const messageContent = message.content || '';
+    const messageType = categorizeMessage(messageContent);
+
+    console.log(`[Webhook:Quo] [${correlationId}] Received from ${phoneNumber}: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`);
+
+    // Store SMS interaction
+    await storage.createSmsInteraction({
+      appointmentId: null,
+      phoneNumber,
+      direction: 'inbound',
+      content: messageContent,
+      status: 'received',
+      messageType,
+    });
+
+    // Handle common responses
+    let responseMessage = '';
+
+    const lower = messageContent.toLowerCase().trim();
+
+    if (['yes', 'confirm', 'ok', 'okay', 'y'].includes(lower)) {
+      responseMessage = 'Thank you for confirming! We appreciate your feedback.';
+    } else if (['no', 'cancel'].includes(lower) || lower.includes('concern') || lower.includes('problem')) {
+      responseMessage = "We're sorry to hear that. A team member will reach out shortly to address your concerns.";
+    } else if (lower === 'reschedule' || lower.includes('change')) {
+      responseMessage = 'To reschedule, please reply with your preferred date and time, or call us at (760) 715-3400.';
+    } else if (lower === 'stop' || lower === 'unsubscribe') {
+      responseMessage = 'You have been unsubscribed from SMS notifications. Reply START to resubscribe.';
+    } else if (lower === 'start') {
+      responseMessage = 'You have been resubscribed to SMS notifications.';
+    } else {
+      responseMessage = 'Thanks for your message! Reply YES to confirm, NO if you have concerns, or RESCHEDULE to change your appointment.';
+    }
+
+    // Send reply via Quo API (not TwiML)
+    if (responseMessage) {
+      try {
+        await quoSmsService.sendSMS(phoneNumber, responseMessage);
+
+        // Log outbound response
+        await storage.createSmsInteraction({
+          appointmentId: null,
+          phoneNumber,
+          direction: 'outbound',
+          content: responseMessage,
+          status: 'sent',
+          messageType: 'auto_reply',
+        });
+      } catch (sendError) {
+        console.error(`[Webhook:Quo] [${correlationId}] Failed to send reply:`, sendError);
+      }
+    }
+
+    res.json({ success: true, correlationId });
+
+  } catch (error) {
+    console.error(`[Webhook:Quo] [${correlationId}] Error:`, error);
+    res.status(500).json({ error: 'Failed to process webhook', correlationId });
+  }
+});
+
+// ===== SQUARE WEBHOOKS =====
+
+// POST /api/webhooks/square-booking - Square booking webhook
+// Apply raw body capture and Square signature verification
+router.post('/square-booking', captureRawBody, verifySquareSignature, async (req: Request, res: Response) => {
+  try {
+    console.log('Square booking webhook received:', JSON.stringify(req.body, null, 2));
+
+    await storage.createActivityLog({
+      type: 'square_booking_webhook',
+      message: `Square booking webhook: ${req.body.type || 'booking.created'}`,
+      details: req.body,
+    });
+
+    res.json({ success: true, message: 'Webhook processed' });
+  } catch (error) {
+    console.error('Square booking webhook error:', error);
+    res.status(500).json({ error: 'Failed to process webhook' });
+  }
+});
+
+// POST /api/webhooks/square-payment - Square payment webhook
+// Apply raw body capture and Square signature verification
+router.post('/square-payment', captureRawBody, verifySquareSignature, async (req: Request, res: Response) => {
+  try {
+    console.log('Square payment webhook received:', JSON.stringify(req.body, null, 2));
+
+    await storage.createActivityLog({
+      type: 'square_payment_webhook',
+      message: `Square payment webhook: ${req.body.type || 'payment.created'}`,
+      details: req.body,
+    });
+
+    res.json({ success: true, message: 'Webhook processed' });
+  } catch (error) {
+    console.error('Square payment webhook error:', error);
+    res.status(500).json({ error: 'Failed to process webhook' });
+  }
+});
+
+// ===== TWILIO WEBHOOKS (DEPRECATED) =====
+// NOTE: Twilio has been replaced with Quo (OpenPhone)
+// These endpoints are kept for backward compatibility during migration
+
+// POST /api/webhooks/twilio-sms - Twilio SMS webhook (DEPRECATED)
+// @deprecated Use /api/webhooks/quo-sms instead
+router.post('/twilio-sms', verifyTwilioSignature, async (req: Request, res: Response) => {
+  try {
+    console.warn('[DEPRECATED] Twilio webhook called - migrate to Quo at /api/webhooks/quo-sms');
+    console.log('Twilio SMS webhook received:', JSON.stringify(req.body, null, 2));
+
+    await storage.createActivityLog({
+      type: 'twilio_sms_webhook',
+      message: `[DEPRECATED] SMS received from ${req.body.From || 'unknown'}`,
+      details: req.body,
+    });
+
+    // Create SMS interaction record
+    await storage.createSmsInteraction({
+      appointmentId: null,
+      phoneNumber: req.body.From,
+      direction: 'inbound',
+      content: req.body.Body,
+      status: req.body.SmsStatus || 'received',
+    });
+
+    res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+  } catch (error) {
+    console.error('Twilio SMS webhook error:', error);
+    res.status(500).json({ error: 'Failed to process webhook' });
+  }
+});
+
+// POST /api/webhooks/squarespace-form - Squarespace form submission
+router.post('/squarespace-form', async (req: Request, res: Response) => {
+  try {
+    console.log('Squarespace form webhook received:', JSON.stringify(req.body, null, 2));
+    const formData = req.body;
+
+    await storage.createActivityLog({
+      type: 'squarespace_form_webhook',
+      message: `Form submission from ${formData.customerName || formData.name || 'unknown'}`,
+      details: formData,
+    });
+
+    // Create transaction record
+    const transaction = await storage.createTransaction({
+      customerName: formData.customerName || formData.name || 'Unknown',
+      customerEmail: formData.customerEmail || formData.email || '',
+      customerPhone: formData.customerPhone || formData.phone || '',
+      vehicleYear: formData.vehicleYear || '',
+      vehicleMake: formData.vehicleMake || '',
+      vehicleModel: formData.vehicleModel || '',
+      vehicleVin: formData.vehicleVin || formData.vin || '',
+      damageDescription: formData.damageDescription || formData.notes || '',
+      status: 'pending',
+      source: 'squarespace',
+      rawPayload: formData,
+    });
+
+    res.json({
+      success: true,
+      message: 'Form processed and job created',
+      transactionId: transaction.id
+    });
+  } catch (error) {
+    console.error('Squarespace form webhook error:', error);
+    res.status(500).json({ error: 'Failed to process webhook' });
+  }
+});
+
+// ===== WEBHOOK EVENTS & ALIASES =====
+
+// GET /api/webhooks/events - List webhook events (from activity logs)
+router.get('/events', async (req: Request, res: Response) => {
+  try {
+    const logs = await storage.getActivityLogs(100);
+    const webhookEvents = logs.filter(log =>
+      log.type.includes('webhook') ||
+      log.type.includes('square') ||
+      log.type.includes('quo') ||
+      log.type.includes('twilio') // Keep for historical logs
+    );
+
+    res.json({ success: true, data: webhookEvents });
+  } catch (error) {
+    console.error('Error fetching webhook events:', error);
+    res.status(500).json({ error: 'Failed to fetch webhook events' });
+  }
+});
+
+// Alias routes for backwards compatibility
+router.post('/squarespace', (req, res) => router.handle(Object.assign(req, { url: '/squarespace-form' }), res, () => {}));
+router.post('/square', (req, res) => router.handle(Object.assign(req, { url: '/square-payment' }), res, () => {}));
+router.post('/twilio', (req, res) => router.handle(Object.assign(req, { url: '/twilio-sms' }), res, () => {}));
+router.post('/sms', (req, res) => router.handle(Object.assign(req, { url: '/quo-sms' }), res, () => {})); // New alias for Quo
+
+export default router;
