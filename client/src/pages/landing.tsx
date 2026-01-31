@@ -66,7 +66,7 @@ export default function Landing() {
           </h1>
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="outline" className="border-gray-400" asChild>
+            <Button size="lg" variant="outline" className="border-gray-600 text-gray-700 hover:bg-gray-100" asChild>
               <a href="tel:+17607153400" className="flex items-center">
                 <Phone className="w-5 h-5 mr-2" />
                 Call for Quote
