@@ -54,12 +54,13 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
     : enhancedTransactions.filter(t => t.status === statusFilter);
 
   // Calculate totals for business metrics (will be 0 when no data)
+  type EnhancedTransaction = typeof enhancedTransactions[number];
   const businessMetrics = {
-    totalContracted: enhancedTransactions.reduce((sum, t) => sum + t.contractedAmount, 0),
-    totalCollected: enhancedTransactions.reduce((sum, t) => sum + t.collectedAmount, 0),
-    pendingCollection: enhancedTransactions.reduce((sum, t) => sum + (t.contractedAmount - t.collectedAmount), 0),
-    collectionRate: enhancedTransactions.reduce((sum, t) => sum + t.contractedAmount, 0) > 0
-      ? (enhancedTransactions.reduce((sum, t) => sum + t.collectedAmount, 0) / enhancedTransactions.reduce((sum, t) => sum + t.contractedAmount, 0) * 100).toFixed(1)
+    totalContracted: enhancedTransactions.reduce((sum: number, t: EnhancedTransaction) => sum + t.contractedAmount, 0),
+    totalCollected: enhancedTransactions.reduce((sum: number, t: EnhancedTransaction) => sum + t.collectedAmount, 0),
+    pendingCollection: enhancedTransactions.reduce((sum: number, t: EnhancedTransaction) => sum + (t.contractedAmount - t.collectedAmount), 0),
+    collectionRate: enhancedTransactions.reduce((sum: number, t: EnhancedTransaction) => sum + t.contractedAmount, 0) > 0
+      ? (enhancedTransactions.reduce((sum: number, t: EnhancedTransaction) => sum + t.collectedAmount, 0) / enhancedTransactions.reduce((sum: number, t: EnhancedTransaction) => sum + t.contractedAmount, 0) * 100).toFixed(1)
       : '0'
   };
 
@@ -256,7 +257,7 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Job & Service
@@ -369,7 +370,7 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
               </tbody>
           </table>
         </div>
-          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 Showing {filteredTransactions.length} transactions with ${businessMetrics.totalContracted.toLocaleString()} total contracted value

@@ -262,7 +262,7 @@ export function InteractiveUSMap({ onRequestQuote }: InteractiveUSMapProps) {
   };
 
   const totalStates = Object.keys(serviceLocationsByState).length;
-  const totalCities = Object.values(serviceLocationsByState).reduce((sum, cities) => sum + cities.length, 0);
+  const totalCities = Object.values(serviceLocationsByState).reduce((sum: number, cities: string[]) => sum + cities.length, 0);
 
   return (
     <div className="space-y-6">

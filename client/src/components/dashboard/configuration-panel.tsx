@@ -60,7 +60,7 @@ export function ConfigurationPanel({ onEditMapping, onTestConnection }: Configur
               Active
             </Badge>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-md p-3 border border-gray-200 dark:border-gray-700">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <code className="text-sm text-gray-700 dark:text-gray-300 font-mono break-all flex-1">
                 {fullWebhookUrl}
@@ -119,7 +119,7 @@ export function ConfigurationPanel({ onEditMapping, onTestConnection }: Configur
           <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Field Mapping Configuration</h4>
           <div className="space-y-2">
             {sampleMappings.map((mapping: any) => (
-              <div key={mapping.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-900 rounded border dark:border-gray-700">
+              <div key={mapping.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded border dark:border-gray-700">
                 <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
                   {mapping.squarespaceField.replace(/([A-Z])/g, ' $1').trim()}
                 </span>

@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.js';
 import { formSubmissions, formAnalytics, userSessions, pageViews } from '@shared/schema';
 import { sql, desc, eq, gte, lte, and, count } from 'drizzle-orm';
 

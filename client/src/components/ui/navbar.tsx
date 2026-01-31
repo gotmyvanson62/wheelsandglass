@@ -33,7 +33,7 @@ export function Navbar({ className = "" }: NavbarProps) {
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 location === href 
                   ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               <Icon className="w-4 h-4" />

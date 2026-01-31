@@ -199,7 +199,7 @@ export function PerformanceMetrics() {
         )}
 
         {/* Real-time Status */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-sm font-medium dark:text-gray-100">Real-time Monitoring</span>

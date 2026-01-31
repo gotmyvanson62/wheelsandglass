@@ -153,7 +153,7 @@ function InstallerCard({ installer, isAssigned, onMessage, onCall, onAssign }: I
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-sm text-gray-900 dark:text-white truncate">{installer.name}</span>
+            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{installer.name}</span>
             {isAssigned && <Badge className="bg-green-500 text-white text-xs">Assigned</Badge>}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">{installer.role}</div>
@@ -243,7 +243,7 @@ function ConversationListItem({ conversation, isActive, onClick }: ConversationL
       onClick={onClick}
     >
       <div className="flex items-start justify-between mb-1">
-        <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
+        <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
           {conversation.customer.name}
         </div>
         <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
@@ -370,7 +370,7 @@ export function IOSMessageThread() {
                 </Button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900 dark:text-white truncate">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {activeConversation.customer.name}
                     </span>
                     <Badge variant="outline" className="text-xs">
@@ -437,7 +437,7 @@ export function IOSMessageThread() {
             <CardContent className="space-y-4">
               {/* Location Info */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
-                <div className="font-medium text-gray-900 dark:text-white">{activeConversation.customer.location}</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100">{activeConversation.customer.location}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {activeConversation.customer.phone}
                 </div>

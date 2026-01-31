@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.js';
 import { notifications, type InsertNotification, type Notification } from '@shared/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { WebSocket } from 'ws';

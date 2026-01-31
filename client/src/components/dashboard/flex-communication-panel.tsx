@@ -320,7 +320,7 @@ export function FlexCommunicationPanel() {
             <ScrollArea className="h-[400px]">
               <div className="space-y-3">
                 {activeJobs.map((job) => (
-                  <Card key={job.id} className="p-4 dark:bg-gray-900 dark:border-gray-700">
+                  <Card key={job.id} className="p-4 dark:bg-gray-800 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${getPriorityColor(job.priority)}`} />
@@ -373,7 +373,7 @@ export function FlexCommunicationPanel() {
 
           <TabsContent value="templates" className="flex-1">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="p-4 dark:bg-gray-900 dark:border-gray-700">
+              <Card className="p-4 dark:bg-gray-800 dark:border-gray-700">
                 <h4 className="font-medium mb-3 dark:text-gray-100">Omega EDI Templates</h4>
                 <div className="space-y-3 text-sm">
                   <div className="p-3 border dark:border-gray-700 rounded">
@@ -403,7 +403,7 @@ export function FlexCommunicationPanel() {
                 </div>
               </Card>
 
-              <Card className="p-4 dark:bg-gray-900 dark:border-gray-700">
+              <Card className="p-4 dark:bg-gray-800 dark:border-gray-700">
                 <h4 className="font-medium mb-3 dark:text-gray-100">Template Variables</h4>
                 <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <div>{`{{contractor_name}}`} - Subcontractor name</div>
