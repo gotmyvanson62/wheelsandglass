@@ -14,8 +14,10 @@ import {
   VEHICLE_YEARS,
   WHEEL_POSITIONS,
   getServiceTypesByDivision,
-  type Division
+  type Division,
+  type ServiceLocation
 } from '@/data/locations';
+import { getCoordinatesFromZip, calculateDistance } from '@/lib/zip-lookup';
 import { apiClient, handleApiError } from '@/lib/api-client';
 import { ClickableVehicleDiagram } from '@/components/clickable-vehicle-diagram';
 import {
@@ -97,6 +99,62 @@ export function QuoteForm({ isOpen, onClose, inline = false, division }: QuoteFo
 
   // For manual model entry when "Other" is selected
   const [customModel, setCustomModel] = useState('');
+
+  // Filtered locations based on zip code proximity
+  const [filteredLocations, setFilteredLocations] = useState<(ServiceLocation & { distance?: number })[]>(SERVICE_LOCATIONS);
+
+  // Filter locations when zip code changes
+  useEffect(() => {
+    // If no zip or incomplete (less than 5 digits), show all locations sorted by state/city
+    if (!formData.zipCode || formData.zipCode.length < 5) {
+      const sorted = [...SERVICE_LOCATIONS]
+        .filter(loc => loc.isActive)
+        .sort((a, b) => {
+          // Sort by state, then city
+          const stateCompare = a.state.localeCompare(b.state);
+          if (stateCompare !== 0) return stateCompare;
+          return a.city.localeCompare(b.city);
+        });
+      setFilteredLocations(sorted);
+      return;
+    }
+
+    // Get coordinates for entered zip code
+    const userCoords = getCoordinatesFromZip(formData.zipCode);
+    if (!userCoords) {
+      // If zip not found in lookup, show all locations
+      setFilteredLocations(SERVICE_LOCATIONS.filter(loc => loc.isActive));
+      return;
+    }
+
+    // Calculate distance to each location and sort by proximity
+    const locationsWithDistance = SERVICE_LOCATIONS
+      .filter(loc => loc.isActive)
+      .map(loc => ({
+        ...loc,
+        distance: calculateDistance(userCoords, loc.coordinates)
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    // Filter to only locations within service radius, or show all if none are within range
+    const withinRadius = locationsWithDistance.filter(loc => loc.distance <= loc.serviceRadius);
+
+    if (withinRadius.length > 0) {
+      // Show locations within service radius (closest first)
+      setFilteredLocations(withinRadius);
+    } else {
+      // No locations within radius - show closest 10 with distance info
+      setFilteredLocations(locationsWithDistance.slice(0, 10));
+    }
+
+    // Clear location selection if previously selected location is no longer in filtered list
+    if (formData.location) {
+      const stillAvailable = locationsWithDistance.find(loc => loc.id === formData.location);
+      if (stillAvailable && stillAvailable.distance > stillAvailable.serviceRadius) {
+        // Selected location is outside service radius - let user keep it but they might want to change
+      }
+    }
+  }, [formData.zipCode]);
 
   // NHTSA API-powered vehicle lookup
   const { makes, models, loadingMakes, loadingModels, errorMakes, errorModels } = useVehicleLookup(formData.year, formData.make);
@@ -446,12 +504,29 @@ export function QuoteForm({ isOpen, onClose, inline = false, division }: QuoteFo
                         <SelectTrigger data-testid="select-location">
                           <SelectValue placeholder="Select your city" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {SERVICE_LOCATIONS.map((location) => (
-                            <SelectItem key={location.id} value={location.id}>{location.city}, {location.state}</SelectItem>
+                        <SelectContent className="max-h-[300px]">
+                          {filteredLocations.map((location) => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.city}, {location.state}
+                              {location.distance !== undefined && (
+                                <span className="text-gray-500 text-xs ml-2">
+                                  ({Math.round(location.distance)} mi)
+                                </span>
+                              )}
+                            </SelectItem>
                           ))}
+                          {filteredLocations.length === 0 && (
+                            <div className="px-2 py-1.5 text-sm text-gray-500">
+                              No service locations found
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
+                      {formData.zipCode && formData.zipCode.length >= 5 && filteredLocations.length > 0 && filteredLocations[0].distance !== undefined && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Showing {filteredLocations.length} location{filteredLocations.length !== 1 ? 's' : ''} nearest to {formData.zipCode}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="serviceType">Service Type *</Label>
