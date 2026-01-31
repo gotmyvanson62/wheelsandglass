@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Helper for optional URL fields that might be empty strings
+const optionalUrl = z.string().url().optional().or(z.literal('').transform(() => undefined));
+
 /**
  * Environment variable validation schema
  * Validates all required environment variables at startup
@@ -35,16 +38,16 @@ const envSchema = z.object({
 
   // Omega EDI (optional - for glass ordering)
   OMEGA_API_KEY: z.string().optional(),
-  OMEGA_API_BASE_URL: z.string().url().optional(),
+  OMEGA_API_BASE_URL: optionalUrl,
   OMEGA_SHOP_ID: z.string().optional(),
 
   // VIN Lookup (optional)
   VIN_API_KEY: z.string().optional(),
-  VIN_API_URL: z.string().url().optional(),
+  VIN_API_URL: optionalUrl,
 
   // NAGS Lookup (optional)
   NAGS_API_KEY: z.string().optional(),
-  NAGS_API_URL: z.string().url().optional(),
+  NAGS_API_URL: optionalUrl,
 }).refine(
   (data) => data.DATABASE_URL || data.POSTGRES_URL,
   { message: 'Either DATABASE_URL or POSTGRES_URL must be set' }
@@ -85,6 +88,18 @@ export function validateEnv(): Env {
     if (process.env.NODE_ENV === 'production') {
       process.exit(1);
     }
+
+    // In development, use defaults for missing/invalid values
+    _env = {
+      NODE_ENV: 'development',
+      PORT: 3001,
+      DATABASE_URL: process.env.DATABASE_URL,
+      POSTGRES_URL: process.env.POSTGRES_URL,
+      CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+      SQUARE_ENVIRONMENT: 'sandbox',
+      QUO_BASE_URL: 'https://api.openphone.com/v1',
+    } as Env;
+    return _env;
   }
 
   _env = result.data as Env;
