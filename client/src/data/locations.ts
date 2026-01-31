@@ -39,16 +39,30 @@ export const SERVICE_LOCATIONS: ServiceLocation[] = [
   },
 ];
 
-export const WINDOW_TYPES = [
-  { value: 'windshield', label: 'Windshield' },
-  { value: 'front_driver', label: 'Front Driver Window' },
-  { value: 'front_passenger', label: 'Front Passenger Window' },
-  { value: 'rear_driver', label: 'Rear Driver Window' },
-  { value: 'rear_passenger', label: 'Rear Passenger Window' },
-  { value: 'rear_windshield', label: 'Rear Windshield' },
-  { value: 'quarter_panel', label: 'Quarter Panel Glass' },
-  { value: 'sunroof', label: 'Sunroof' },
-];
+export const WINDOW_TYPES = {
+  windshields: [
+    { value: 'windshield', label: 'Front Windshield' },
+    { value: 'rear_windshield', label: 'Rear Windshield' },
+  ],
+  sideWindows: [
+    { value: 'front_driver', label: 'Front Driver Window' },
+    { value: 'front_passenger', label: 'Front Passenger Window' },
+    { value: 'rear_driver', label: 'Rear Driver Window' },
+    { value: 'rear_passenger', label: 'Rear Passenger Window' },
+  ],
+  quarterPanels: [
+    { value: 'quarter_panel_left', label: 'Left Quarter Panel' },
+    { value: 'quarter_panel_right', label: 'Right Quarter Panel' },
+  ],
+  vents: [
+    { value: 'vent_left', label: 'Left Vent Window' },
+    { value: 'vent_right', label: 'Right Vent Window' },
+  ],
+  other: [
+    { value: 'sunroof', label: 'Sunroof' },
+    { value: 'moonroof', label: 'Moonroof' },
+  ],
+};
 
 export const SERVICE_TYPES = [
   { value: 'replacement', label: 'Glass Replacement' },

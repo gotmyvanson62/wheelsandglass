@@ -52,11 +52,7 @@ export default function VinLookupPage() {
   // VIN Lookup mutation
   const vinLookupMutation = useMutation({
     mutationFn: async (vinNumber: string) => {
-      const response = await apiRequest(`/api/vin/lookup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vin: vinNumber })
-      });
+      const response = await apiRequest('/api/vin/lookup', 'POST', { vin: vinNumber });
       return response.json();
     },
     onSuccess: (data: VehicleDetails) => {
@@ -71,11 +67,7 @@ export default function VinLookupPage() {
   // NAGS Parts lookup mutation
   const nagsLookupMutation = useMutation({
     mutationFn: async (vinNumber: string) => {
-      const response = await apiRequest(`/api/nags/parts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vin: vinNumber })
-      });
+      const response = await apiRequest('/api/nags/parts', 'POST', { vin: vinNumber });
       return response.json();
     },
     onSuccess: (data: GlassSelectionOptions) => {
@@ -83,8 +75,16 @@ export default function VinLookupPage() {
     }
   });
 
+  interface Subcontractor {
+    id: number;
+    name: string;
+    email: string;
+    rating: number;
+    specialties?: string[];
+  }
+
   // Get subcontractors
-  const { data: subcontractors } = useQuery({
+  const { data: subcontractors } = useQuery<Subcontractor[]>({
     queryKey: ['/api/subcontractors'],
     enabled: !!selectedPart
   });
@@ -358,14 +358,14 @@ export default function VinLookupPage() {
       )}
 
       {/* Available Subcontractors */}
-      {subcontractors && subcontractors.length > 0 && selectedPart && (
+      {subcontractors && Array.isArray(subcontractors) && subcontractors.length > 0 && selectedPart && (
         <Card>
           <CardHeader>
             <CardTitle>Available Installers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              {subcontractors.map((contractor: any) => (
+              {subcontractors.map((contractor) => (
                 <div key={contractor.id} className="flex justify-between items-center p-4 border rounded-lg">
                   <div>
                     <h3 className="font-semibold">{contractor.name}</h3>

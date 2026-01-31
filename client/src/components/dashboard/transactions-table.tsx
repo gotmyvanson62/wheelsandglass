@@ -2,8 +2,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Transaction } from "@shared/schema";
 import { format } from "date-fns";
+
+// Local Transaction interface
+interface Transaction {
+  id: number;
+  createdAt?: string | Date;
+  customerName?: string;
+  vehicleYear?: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  damageDescription?: string;
+  paymentStatus?: string;
+  status?: string;
+  omegaJobId?: string;
+  finalPrice?: string;
+  paymentAmount?: string;
+}
 import { useState } from "react";
 import { DollarSign, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from "lucide-react";
 

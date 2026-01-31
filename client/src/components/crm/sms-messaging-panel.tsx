@@ -56,7 +56,7 @@ export function SMSMessagingPanel() {
   });
 
   // Fetch Twilio Flex status
-  const { data: flexStatus = {} } = useQuery<{
+  const { data: flexStatus = { connected: false, availableAgents: 0, queueLength: 0 } } = useQuery<{
     connected: boolean;
     availableAgents: number;
     queueLength: number;

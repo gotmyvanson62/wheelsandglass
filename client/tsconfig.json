@@ -12,7 +12,9 @@
       "shared/*": ["../shared/dist/*"]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false
   },
   "include": ["src"],
   "references": [

@@ -299,7 +299,7 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {SERVICE_LOCATIONS.map((location) => (
-                            <SelectItem key={location} value={location}>{location}</SelectItem>
+                            <SelectItem key={location.id} value={location.id}>{location.city}, {location.state}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -312,7 +312,7 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {SERVICE_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -335,7 +335,7 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {VEHICLE_YEARS.map((year) => (
-                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                            <SelectItem key={year.value} value={year.value}>{year.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -348,7 +348,7 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {VEHICLE_MAKES.map((make) => (
-                            <SelectItem key={make} value={make}>{make}</SelectItem>
+                            <SelectItem key={make.value} value={make.value}>{make.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -448,15 +448,15 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                     <h4 className="font-medium text-gray-700">Windshields</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {WINDOW_TYPES.windshields.map((window) => (
-                        <div key={window} className="flex items-center space-x-2">
+                        <div key={window.value} className="flex items-center space-x-2">
                           <Checkbox
-                            id={window}
-                            data-testid={`checkbox-${window}`}
-                            checked={selectedWindows.includes(window)}
-                            onCheckedChange={(checked) => handleWindowSelection(window, !!checked)}
+                            id={window.value}
+                            data-testid={`checkbox-${window.value}`}
+                            checked={selectedWindows.includes(window.value)}
+                            onCheckedChange={(checked) => handleWindowSelection(window.value, !!checked)}
                           />
-                          <Label htmlFor={window} className="text-sm font-normal cursor-pointer">
-                            {window}
+                          <Label htmlFor={window.value} className="text-sm font-normal cursor-pointer">
+                            {window.label}
                           </Label>
                         </div>
                       ))}
@@ -468,15 +468,15 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                     <h4 className="font-medium text-gray-700">Side Windows</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {WINDOW_TYPES.sideWindows.map((window) => (
-                        <div key={window} className="flex items-center space-x-2">
+                        <div key={window.value} className="flex items-center space-x-2">
                           <Checkbox
-                            id={window}
-                            data-testid={`checkbox-${window}`}
-                            checked={selectedWindows.includes(window)}
-                            onCheckedChange={(checked) => handleWindowSelection(window, !!checked)}
+                            id={window.value}
+                            data-testid={`checkbox-${window.value}`}
+                            checked={selectedWindows.includes(window.value)}
+                            onCheckedChange={(checked) => handleWindowSelection(window.value, !!checked)}
                           />
-                          <Label htmlFor={window} className="text-sm font-normal cursor-pointer">
-                            {window}
+                          <Label htmlFor={window.value} className="text-sm font-normal cursor-pointer">
+                            {window.label}
                           </Label>
                         </div>
                       ))}
@@ -488,15 +488,15 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                     <h4 className="font-medium text-gray-700">Quarter Panels</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {WINDOW_TYPES.quarterPanels.map((window) => (
-                        <div key={window} className="flex items-center space-x-2">
+                        <div key={window.value} className="flex items-center space-x-2">
                           <Checkbox
-                            id={window}
-                            data-testid={`checkbox-${window}`}
-                            checked={selectedWindows.includes(window)}
-                            onCheckedChange={(checked) => handleWindowSelection(window, !!checked)}
+                            id={window.value}
+                            data-testid={`checkbox-${window.value}`}
+                            checked={selectedWindows.includes(window.value)}
+                            onCheckedChange={(checked) => handleWindowSelection(window.value, !!checked)}
                           />
-                          <Label htmlFor={window} className="text-sm font-normal cursor-pointer">
-                            {window}
+                          <Label htmlFor={window.value} className="text-sm font-normal cursor-pointer">
+                            {window.label}
                           </Label>
                         </div>
                       ))}
@@ -508,15 +508,15 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                     <h4 className="font-medium text-gray-700">Vents</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {WINDOW_TYPES.vents.map((window) => (
-                        <div key={window} className="flex items-center space-x-2">
+                        <div key={window.value} className="flex items-center space-x-2">
                           <Checkbox
-                            id={window}
-                            data-testid={`checkbox-${window}`}
-                            checked={selectedWindows.includes(window)}
-                            onCheckedChange={(checked) => handleWindowSelection(window, !!checked)}
+                            id={window.value}
+                            data-testid={`checkbox-${window.value}`}
+                            checked={selectedWindows.includes(window.value)}
+                            onCheckedChange={(checked) => handleWindowSelection(window.value, !!checked)}
                           />
-                          <Label htmlFor={window} className="text-sm font-normal cursor-pointer">
-                            {window}
+                          <Label htmlFor={window.value} className="text-sm font-normal cursor-pointer">
+                            {window.label}
                           </Label>
                         </div>
                       ))}
@@ -528,15 +528,15 @@ export function QuoteForm({ isOpen, onClose }: QuoteFormProps) {
                     <h4 className="font-medium text-gray-700">Other</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {WINDOW_TYPES.other.map((window) => (
-                        <div key={window} className="flex items-center space-x-2">
+                        <div key={window.value} className="flex items-center space-x-2">
                           <Checkbox
-                            id={window}
-                            data-testid={`checkbox-${window}`}
-                            checked={selectedWindows.includes(window)}
-                            onCheckedChange={(checked) => handleWindowSelection(window, !!checked)}
+                            id={window.value}
+                            data-testid={`checkbox-${window.value}`}
+                            checked={selectedWindows.includes(window.value)}
+                            onCheckedChange={(checked) => handleWindowSelection(window.value, !!checked)}
                           />
-                          <Label htmlFor={window} className="text-sm font-normal cursor-pointer">
-                            {window}
+                          <Label htmlFor={window.value} className="text-sm font-normal cursor-pointer">
+                            {window.label}
                           </Label>
                         </div>
                       ))}

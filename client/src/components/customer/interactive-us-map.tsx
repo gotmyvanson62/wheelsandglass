@@ -1,4 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+
+// Global type declarations for dynamically loaded libraries
+declare global {
+  interface Window {
+    d3: any;
+    topojson: any;
+  }
+}
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,18 +81,23 @@ const serviceLocationsByState: Record<string, string[]> = {
 
 // FIPS to state name and abbreviation mapping
 const fipsToName: Record<string, string> = {
-  "01": "Alabama", "02": "Alaska", "04": "Arizona", "05": "Arkansas", "06": "California", 
-  "08": "Colorado", "09": "Connecticut", "10": "Delaware", "11": "District of Columbia", 
-  "12": "Florida", "13": "Georgia", "15": "Hawaii", "16": "Idaho", "17": "Illinois", 
-  "18": "Indiana", "19": "Iowa", "20": "Kansas", "21": "Kentucky", "22": "Louisiana", 
-  "23": "Maine", "24": "Maryland", "25": "Massachusetts", "26": "Michigan", "27": "Minnesota", 
-  "28": "Mississippi", "29": "Missouri", "30": "Montana", "31": "Nebraska", "32": "Nevada", 
-  "33": "New Hampshire", "34": "New Jersey", "35": "New Mexico", "36": "New York", 
-  "37": "North Carolina", "38": "North Dakota", "39": "Ohio", "40": "Oklahoma", 
-  "41": "Oregon", "42": "Pennsylvania", "44": "Rhode Island", "45": "South Carolina", 
-  "46": "South Dakota", "47": "Tennessee", "48": "Texas", "49": "Utah", "50": "Vermont", 
+  "01": "Alabama", "02": "Alaska", "04": "Arizona", "05": "Arkansas", "06": "California",
+  "08": "Colorado", "09": "Connecticut", "10": "Delaware", "11": "District of Columbia",
+  "12": "Florida", "13": "Georgia", "15": "Hawaii", "16": "Idaho", "17": "Illinois",
+  "18": "Indiana", "19": "Iowa", "20": "Kansas", "21": "Kentucky", "22": "Louisiana",
+  "23": "Maine", "24": "Maryland", "25": "Massachusetts", "26": "Michigan", "27": "Minnesota",
+  "28": "Mississippi", "29": "Missouri", "30": "Montana", "31": "Nebraska", "32": "Nevada",
+  "33": "New Hampshire", "34": "New Jersey", "35": "New Mexico", "36": "New York",
+  "37": "North Carolina", "38": "North Dakota", "39": "Ohio", "40": "Oklahoma",
+  "41": "Oregon", "42": "Pennsylvania", "44": "Rhode Island", "45": "South Carolina",
+  "46": "South Dakota", "47": "Tennessee", "48": "Texas", "49": "Utah", "50": "Vermont",
   "51": "Virginia", "53": "Washington", "54": "West Virginia", "55": "Wisconsin", "56": "Wyoming"
 };
+
+// Reverse mapping: state name to FIPS code
+const nameToFips: Record<string, string> = Object.fromEntries(
+  Object.entries(fipsToName).map(([fips, name]) => [name, fips])
+);
 
 interface CensusPlace {
   name: string;
@@ -172,21 +185,21 @@ export function InteractiveUSMap({ onRequestQuote }: InteractiveUSMapProps) {
           .attr('stroke', '#374151')
           .attr('stroke-width', 1)
           .style('cursor', 'pointer')
-          .on('mouseover', function(event, d) {
+          .on('mouseover', function(_event: unknown, d: { id: string }) {
             const stateName = fipsToName[d.id];
             if (serviceLocationsByState[stateName]) {
               window.d3.select(this).attr('fill', '#60a5fa');
             }
           })
-          .on('mouseout', function(event, d) {
+          .on('mouseout', function(_event: unknown, d: { id: string }) {
             const stateName = fipsToName[d.id];
             if (selectedState !== d.id) {
-              window.d3.select(this).attr('fill', 
+              window.d3.select(this).attr('fill',
                 serviceLocationsByState[stateName] ? '#10b981' : '#e5e7eb'
               );
             }
           })
-          .on('click', (event, d) => {
+          .on('click', (_event: unknown, d: { id: string }) => {
             const stateName = fipsToName[d.id];
             if (serviceLocationsByState[stateName]) {
               handleStateClick(d.id, stateName);
@@ -222,15 +235,15 @@ export function InteractiveUSMap({ onRequestQuote }: InteractiveUSMapProps) {
       const response = await fetch(url);
       const rows = await response.json();
       
-      const [header, ...data] = rows;
-      const places = data.map(r => ({
+      const [_header, ...data] = rows as [string[], ...string[][]];
+      const places = data.map((r: string[]) => ({
         name: r[0],
         pop: Number(r[1]),
         state: r[2],
         place: r[3]
       }))
-      .filter(p => !Number.isNaN(p.pop))
-      .sort((a, b) => b.pop - a.pop)
+      .filter((p: { pop: number }) => !Number.isNaN(p.pop))
+      .sort((a: { pop: number }, b: { pop: number }) => b.pop - a.pop)
       .slice(0, 50); // Limit to top 50 cities
 
       setCensusCities(places);
@@ -324,7 +337,7 @@ export function InteractiveUSMap({ onRequestQuote }: InteractiveUSMapProps) {
                 key={state}
                 variant="outline"
                 className="h-auto p-3 flex flex-col items-start justify-between hover:bg-blue-50 hover:border-blue-300"
-                onClick={() => handleStateClick(state)}
+                onClick={() => handleStateClick(nameToFips[state] || state, state)}
               >
                 <div className="font-medium text-sm">{state}</div>
                 <div className="text-xs text-gray-500">

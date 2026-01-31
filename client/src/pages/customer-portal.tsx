@@ -144,7 +144,7 @@ export default function CustomerPortal() {
 
   // Generate available dates (next 14 days, excluding weekends)
   const getAvailableDates = () => {
-    const dates = [];
+    const dates: Array<{ value: string; label: string; dayCode: string }> = [];
     const today = new Date();
     
     for (let i = 1; i <= 14; i++) {

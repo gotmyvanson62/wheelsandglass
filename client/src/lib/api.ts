@@ -1,8 +1,9 @@
+/// <reference types="vite/client" />
 import axios from 'axios';
 import type { ApiResponse } from 'shared';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: (import.meta.env?.VITE_API_URL as string) || '/api',
   headers: {
     'Content-Type': 'application/json',
   },

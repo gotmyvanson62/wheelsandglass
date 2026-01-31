@@ -1,7 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { ActivityLog } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+
+// Local ActivityLog interface
+interface ActivityLog {
+  id: number;
+  type: string;
+  message: string;
+  details?: Record<string, unknown>;
+  timestamp: string | Date;
+}
 
 interface ActivityMonitorProps {
   activities: ActivityLog[];

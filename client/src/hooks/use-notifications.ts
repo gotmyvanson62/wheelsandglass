@@ -1,5 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Notification } from '@shared/schema';
+
+// Local interface matching the notification structure
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  resolved: boolean;
+  resolvedAt?: Date;
+  resolvedBy?: string;
+  createdAt: Date;
+  metadata?: Record<string, unknown>;
+}
 
 interface WebSocketMessage {
   type: 'notification' | 'notification_update';
@@ -61,9 +74,9 @@ export function useNotifications(): NotificationHookReturn {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
         
-        if (message.type === 'notification') {
+        if (message.type === 'notification' && message.notification) {
           console.log('[Notifications] Received:', message.notification.title);
-          setNotifications(prev => [message.notification, ...prev]);
+          setNotifications(prev => [message.notification!, ...prev]);
         } else if (message.type === 'notification_update') {
           setNotifications(prev => 
             prev.map(n => 
