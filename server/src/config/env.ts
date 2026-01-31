@@ -54,6 +54,12 @@ const envSchema = z.object({
 ).refine(
   (data) => data.NODE_ENV !== 'production' || (data.JWT_SECRET && data.JWT_SECRET.length >= 32),
   { message: 'JWT_SECRET is required in production and must be at least 32 characters' }
+).refine(
+  (data) => data.NODE_ENV !== 'production' || (data.SESSION_SECRET && data.SESSION_SECRET.length >= 16),
+  { message: 'SESSION_SECRET is required in production and must be at least 16 characters' }
+).refine(
+  (data) => data.NODE_ENV !== 'production' || (data.ADMIN_PASSWORD && data.ADMIN_PASSWORD.length >= 8),
+  { message: 'ADMIN_PASSWORD is required in production and must be at least 8 characters' }
 );
 
 export type Env = z.infer<typeof envSchema>;

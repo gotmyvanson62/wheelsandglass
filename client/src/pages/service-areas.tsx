@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link, useLocation } from 'wouter';
-import { 
+import {
   MapPin,
   ArrowLeft,
   Car,
@@ -14,6 +14,7 @@ import {
   Navigation,
   Users
 } from 'lucide-react';
+import { CustomerCoverageMap } from '@/components/customer/customer-coverage-map';
 
 interface ServiceArea {
   city: string;
@@ -1325,9 +1326,14 @@ export default function ServiceAreas() {
           Service Areas
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          We provide professional auto glass services across all 48 contiguous US states. 
+          We provide professional auto glass services across all 48 contiguous US states.
           Select your state to see detailed coverage areas and cities we serve.
         </p>
+      </div>
+
+      {/* Interactive Coverage Map */}
+      <div className="max-w-4xl mx-auto">
+        <CustomerCoverageMap className="mb-6" />
       </div>
 
       {/* Coverage Summary */}

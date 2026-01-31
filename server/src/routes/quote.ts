@@ -3,8 +3,23 @@ import { z } from 'zod';
 import { storage } from '../storage.js';
 import { vinLookupService, VinLookupService } from '../services/vin-lookup.js';
 import { insertQuoteSubmissionSchema, type InsertQuoteSubmission, type Customer } from '@shared/schema';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
+
+// SECURITY: Allowed file types for uploads
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf'
+];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 5;
+
+// Division type for brand differentiation
+const divisionSchema = z.enum(['glass', 'wheels']).default('glass');
 
 // Validation schema for quote submission
 const quoteSubmitSchema = z.object({
@@ -15,6 +30,7 @@ const quoteSubmitSchema = z.object({
   location: z.string().min(1, 'Location is required'),
   zipCode: z.string().min(1, 'Zip code is required'),
   serviceType: z.string().min(1, 'Service type is required'),
+  division: divisionSchema,
   privacyTinted: z.string().optional(),
   year: z.string().optional(),
   make: z.string().optional(),
@@ -22,12 +38,28 @@ const quoteSubmitSchema = z.object({
   vin: z.string().optional(),
   licensePlate: z.string().optional(),
   notes: z.string().optional(),
-  selectedWindows: z.array(z.string()).min(1, 'Please select at least one window'),
+  // Glass division: selected windows
+  selectedWindows: z.array(z.string()).optional().default([]),
+  // Wheels division: selected wheel positions
+  selectedWheels: z.array(z.string()).optional().default([]),
+  // SECURITY: File upload validation with type and size restrictions
   uploadedFiles: z.array(z.object({
-    name: z.string(),
-    size: z.number(),
-    type: z.string()
-  })).optional().default([])
+    name: z.string().max(255, 'Filename too long'),
+    size: z.number().max(MAX_FILE_SIZE, `File size must be under ${MAX_FILE_SIZE / 1024 / 1024}MB`),
+    type: z.string().refine(
+      (type) => ALLOWED_FILE_TYPES.includes(type),
+      { message: `File type must be one of: ${ALLOWED_FILE_TYPES.join(', ')}` }
+    )
+  })).max(MAX_FILES, `Maximum ${MAX_FILES} files allowed`).optional().default([])
+}).refine(data => {
+  // Require appropriate selection based on division
+  if (data.division === 'wheels') {
+    return data.selectedWheels && data.selectedWheels.length > 0;
+  }
+  return data.selectedWindows && data.selectedWindows.length > 0;
+}, {
+  message: "Please select at least one item (window for glass, wheel for wheels)",
+  path: ['selection']
 });
 
 /**
@@ -42,10 +74,13 @@ router.post('/submit', async (req: Request, res: Response) => {
   try {
     // [QUOTE API] Request received - strategic logging for end-to-end testing
     console.log('[QUOTE API] Request received:', {
+      division: req.body.division || 'glass',
       email: req.body.email,
       phone: req.body.mobilePhone,
       vin: req.body.vin,
       serviceType: req.body.serviceType,
+      windowCount: req.body.selectedWindows?.length || 0,
+      wheelCount: req.body.selectedWheels?.length || 0,
       timestamp: new Date().toISOString()
     });
 
@@ -113,13 +148,16 @@ router.post('/submit', async (req: Request, res: Response) => {
       location: formData.location,
       zipCode: formData.zipCode,
       serviceType: formData.serviceType,
+      division: formData.division,
       privacyTinted: formData.privacyTinted || null,
       year: vinDecodedData.year || formData.year || null,
       make: vinDecodedData.make || formData.make || null,
       model: vinDecodedData.model || formData.model || null,
       vin: formData.vin || null,
+      licensePlate: formData.licensePlate || null,
       notes: formData.notes || null,
       selectedWindows: formData.selectedWindows,
+      selectedWheels: formData.selectedWheels,
       uploadedFiles: formData.uploadedFiles,
       status: 'submitted'
     };
@@ -138,14 +176,16 @@ router.post('/submit', async (req: Request, res: Response) => {
     // Log the activity
     await storage.createActivityLog({
       type: 'quote_submitted',
-      message: `New quote request from ${formData.firstName} ${formData.lastName} (${formData.email})`,
+      message: `New ${formData.division === 'wheels' ? 'wheel repair' : 'glass'} quote request from ${formData.firstName} ${formData.lastName} (${formData.email})`,
       details: {
         submissionId: submission.id,
         customerId: customer.id,
+        division: formData.division,
         serviceType: formData.serviceType,
         location: formData.location,
         vinDecoded: !!vinDecodedData.year,
-        windowCount: formData.selectedWindows.length
+        windowCount: formData.selectedWindows.length,
+        wheelCount: formData.selectedWheels.length
       }
     });
 
@@ -176,8 +216,9 @@ router.post('/submit', async (req: Request, res: Response) => {
  * GET /api/quote/submissions
  * List all quote submissions (admin use)
  * Supports filtering by status, date range, and search
+ * SECURITY: Requires authentication
  */
-router.get('/submissions', async (req: Request, res: Response) => {
+router.get('/submissions', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { status, search, limit = '50', offset = '0' } = req.query;
 
@@ -228,8 +269,9 @@ router.get('/submissions', async (req: Request, res: Response) => {
 /**
  * GET /api/quote/submissions/:id
  * Get a single quote submission by ID
+ * SECURITY: Requires authentication
  */
-router.get('/submissions/:id', async (req: Request, res: Response) => {
+router.get('/submissions/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
 
@@ -258,8 +300,9 @@ router.get('/submissions/:id', async (req: Request, res: Response) => {
 /**
  * PUT /api/quote/submissions/:id
  * Update a quote submission status
+ * SECURITY: Requires authentication
  */
-router.put('/submissions/:id', async (req: Request, res: Response) => {
+router.put('/submissions/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const { status } = req.body;
@@ -319,11 +362,106 @@ router.put('/submissions/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/quote/submissions/:id/convert-to-job
+ * Convert a quote submission to a job
+ * Creates a new job record and updates quote status to 'converted'
+ * SECURITY: Requires authentication
+ */
+router.post('/submissions/:id/convert-to-job', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid submission ID' });
+    }
+
+    // Get the quote submission
+    const submissions = await storage.getQuoteSubmissions();
+    const submission = submissions.find(s => s.id === id);
+
+    if (!submission) {
+      return res.status(404).json({ error: 'Quote submission not found' });
+    }
+
+    // Check if already converted
+    if (submission.status === 'converted') {
+      return res.status(400).json({ error: 'Quote has already been converted to a job' });
+    }
+
+    // Create a new transaction (job) from the quote data
+    // In this system, jobs are represented as transactions
+    const transactionData = {
+      customerId: submission.customerId,
+      customerName: `${submission.firstName} ${submission.lastName}`,
+      customerEmail: submission.email,
+      customerPhone: submission.mobilePhone,
+      vehicleYear: submission.year || null,
+      vehicleMake: submission.make || null,
+      vehicleModel: submission.model || null,
+      vehicleVin: submission.vin || null,
+      damageDescription: submission.serviceType,
+      status: 'pending',
+      paymentStatus: 'pending' as const,
+      sourceType: 'customer',
+      formData: {
+        quoteSubmissionId: submission.id,
+        division: submission.division,
+        serviceType: submission.serviceType,
+        location: submission.location,
+        zipCode: submission.zipCode,
+        selectedWindows: submission.selectedWindows,
+        selectedWheels: submission.selectedWheels,
+        notes: submission.notes,
+        privacyTinted: submission.privacyTinted,
+      },
+    };
+
+    const job = await storage.createTransaction(transactionData);
+
+    // Update quote status to 'converted'
+    await storage.updateQuoteSubmission(id, {
+      status: 'converted',
+      processedAt: new Date().toISOString()
+    });
+
+    // Log the conversion activity
+    await storage.createActivityLog({
+      type: 'quote_converted_to_job',
+      message: `Quote #${id} converted to Job #${job.id} for ${submission.firstName} ${submission.lastName}`,
+      details: {
+        quoteId: id,
+        jobId: job.id,
+        customerId: submission.customerId,
+        division: submission.division,
+        serviceType: submission.serviceType
+      }
+    });
+
+    console.log(`[QUOTE API] Quote #${id} converted to Job #${job.id}`);
+
+    res.json({
+      success: true,
+      message: 'Quote successfully converted to job',
+      jobId: job.id,
+      quoteId: id
+    });
+
+  } catch (error) {
+    console.error('Error converting quote to job:', error);
+    res.status(500).json({
+      error: 'Failed to convert quote to job',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/quote/stats
  * Get quote submission statistics for dashboard
  * Optimized: Single pass through data instead of 8 separate filters
+ * SECURITY: Requires authentication
  */
-router.get('/stats', async (req: Request, res: Response) => {
+router.get('/stats', authMiddleware, async (req: Request, res: Response) => {
   try {
     const submissions = await storage.getQuoteSubmissions();
 

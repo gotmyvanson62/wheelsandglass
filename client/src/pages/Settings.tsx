@@ -30,6 +30,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  Activity,
   AlertTriangle,
   CheckCircle,
   Copy,
@@ -169,8 +170,8 @@ export default function SettingsDocumentation() {
                     <ul className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
                       <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">OMEGA_EDI_API_KEY</code> - Your Omega EDI API key</li>
                       <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">SQUARE_ACCESS_TOKEN</code> - Square API access token</li>
-                      <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">TWILIO_ACCOUNT_SID</code> - Twilio account SID</li>
-                      <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> - Twilio auth token</li>
+                      <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">QUO_API_KEY</code> - Quo (OpenPhone) API key</li>
+                      <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">QUO_PHONE_NUMBER_ID</code> - Quo phone number ID</li>
                     </ul>
                   </div>
                   
@@ -244,9 +245,9 @@ export default function SettingsDocumentation() {
                   <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline">POST</Badge>
-                      <code className="text-sm font-mono">/api/webhook/twilio</code>
+                      <code className="text-sm font-mono">/api/webhook/quo</code>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Processes inbound SMS messages</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Processes inbound SMS messages via Quo (OpenPhone)</p>
                     <div className="text-xs">
                       <p className="font-medium mb-1 dark:text-gray-200">SMS Commands:</p>
                       <ul className="space-y-1 text-gray-600 dark:text-gray-400">
@@ -398,6 +399,155 @@ export default function SettingsDocumentation() {
           </Card>
         );
 
+      case 'integration-status':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Integration Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-gray-600 dark:text-gray-400">
+                Current status of all system integrations and required configuration.
+              </p>
+
+              {/* Integration Status Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">Integration</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">Status</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">Required Keys</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium">Omega EDI</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300">
+                          Pending Setup
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">OMEGA_EDI_API_KEY</code>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">API key needed for job management</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium">Square Payments</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300">
+                          Pending Setup
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">SQUARE_ACCESS_TOKEN</code><br/>
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">SQUARE_LOCATION_ID</code>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Access token needed for payments</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium">Quo (OpenPhone)</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300">
+                          Pending Setup
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">QUO_API_KEY</code><br/>
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">QUO_PHONE_NUMBER_ID</code>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">API key needed for SMS notifications</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium">VIN Lookup (NHTSA)</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300">
+                          Active
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">None required</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Free NHTSA API - working fallback</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium">Squarespace Webhooks</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300">
+                          Ready
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">None required</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Webhook endpoint configured</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium">PostgreSQL Database</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300">
+                          Connected
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">DATABASE_URL</code>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Vercel Postgres connected</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Missing API Keys Alert */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-medium text-amber-800 dark:text-amber-300 mb-2">Missing API Keys</h5>
+                    <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
+                      The following integrations require API keys to be configured in your environment variables:
+                    </p>
+                    <ul className="text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                      <li>• <strong>Omega EDI:</strong> Contact Omega EDI to obtain your API key</li>
+                      <li>• <strong>Square:</strong> Generate access token from Square Developer Dashboard</li>
+                      <li>• <strong>Quo (OpenPhone):</strong> Get API key from OpenPhone dashboard settings</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Configuration Instructions */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h5 className="font-medium text-blue-800 dark:text-blue-300 mb-2">How to Configure</h5>
+                <ol className="text-sm text-blue-700 dark:text-blue-400 space-y-2">
+                  <li>1. Navigate to your Vercel project dashboard</li>
+                  <li>2. Go to Settings → Environment Variables</li>
+                  <li>3. Add each required key with the appropriate value</li>
+                  <li>4. Redeploy the application for changes to take effect</li>
+                  <li>5. Use the "Test" buttons on the Integrations tab to verify connections</li>
+                </ol>
+              </div>
+
+              {/* Status Legend */}
+              <div className="flex flex-wrap gap-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">Active</Badge>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Fully configured and working</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">Pending Setup</Badge>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Requires API key configuration</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">Ready</Badge>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Endpoint ready, no keys needed</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
       case 'changelog':
         return (
           <Card>
@@ -498,7 +648,7 @@ export default function SettingsDocumentation() {
                         <li>✓ Complete Squarespace to Omega EDI integration</li>
                         <li>✓ VIN lookup and vehicle identification system</li>
                         <li>✓ Real-time pricing integration with Square Appointments</li>
-                        <li>✓ SMS notification system via Twilio</li>
+                        <li>✓ SMS notification system via Quo (OpenPhone)</li>
                         <li>✓ Comprehensive error monitoring and retry logic</li>
                         <li>✓ Admin portal with role-based authentication</li>
                       </ul>
@@ -571,7 +721,7 @@ export default function SettingsDocumentation() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-gray-600 dark:text-gray-400">
-                  The Express Auto Glass Integration Hub streamlines the auto glass service process
+                  The Wheels and Glass Integration Hub streamlines the auto glass service process
                   from customer inquiry to job completion through automated workflows and integrations.
                 </p>
                 
@@ -582,7 +732,7 @@ export default function SettingsDocumentation() {
                     <li>• VIN lookup and vehicle identification</li>
                     <li>• Real-time Omega EDI job creation</li>
                     <li>• Square payment processing integration</li>
-                    <li>• SMS notification system via Twilio</li>
+                    <li>• SMS notification system via Quo (OpenPhone)</li>
                     <li>• Comprehensive error monitoring and retry logic</li>
                   </ul>
                 </div>
@@ -920,12 +1070,12 @@ export default function SettingsDocumentation() {
                 </div>
                 
                 <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t">
-                  <p>API Keys are stored securely in Replit Secrets:</p>
+                  <p>API Keys are stored securely in environment variables:</p>
                   <ul className="mt-1 space-y-1">
                     <li>• OMEGA_EDI_API_KEY</li>
                     <li>• SQUARE_ACCESS_TOKEN</li>
-                    <li>• TWILIO_ACCOUNT_SID</li>
-                    <li>• TWILIO_AUTH_TOKEN</li>
+                    <li>• QUO_API_KEY</li>
+                    <li>• QUO_PHONE_NUMBER_ID</li>
                   </ul>
                 </div>
               </CardContent>
@@ -1073,33 +1223,33 @@ export default function SettingsDocumentation() {
               </CardContent>
             </Card>
 
-            {/* Twilio Integration */}
+            {/* Quo (OpenPhone) Integration */}
             <Card className="flex flex-col h-full">
               <CardHeader className="flex-shrink-0">
                 <CardTitle className="flex items-center gap-2 flex-wrap">
                   <Phone className="w-5 h-5 flex-shrink-0" />
-                  <span>Twilio</span>
+                  <span>Quo (OpenPhone)</span>
                   <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">Configurable</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">SMS notifications and communication</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">SMS notifications and team communication</p>
 
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">Phone Number</Label>
+                    <Label className="text-xs">Phone Number ID</Label>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="+1234567890"
+                        placeholder="PN_xxxxxxxxxx"
                         className="text-xs min-w-0 flex-1"
-                        defaultValue="+15551234567"
+                        defaultValue=""
                         onChange={() => setUnsavedChanges(true)}
                       />
                       <Button
                         size="sm"
                         variant="outline"
                         className="flex-shrink-0"
-                        onClick={() => testConnectionMutation.mutate('twilio')}
+                        onClick={() => testConnectionMutation.mutate('quo')}
                         disabled={testConnectionMutation.isPending}
                       >
                         Test
@@ -1109,7 +1259,7 @@ export default function SettingsDocumentation() {
 
                   <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                     <div className="flex items-center gap-1 flex-wrap">SMS Status: <Badge variant="outline" className="text-xs">Testing Available</Badge></div>
-                    <div className="text-xs">Account SID & Auth Token: Set via Secrets tab</div>
+                    <div className="text-xs">API Key & Phone ID: Set via environment variables</div>
                   </div>
                 </div>
               </CardContent>
@@ -1156,9 +1306,9 @@ export default function SettingsDocumentation() {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline">POST</Badge>
-                        <code className="text-sm">/api/webhook/twilio</code>
+                        <code className="text-sm">/api/webhook/quo</code>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Processes inbound SMS messages</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Processes inbound SMS messages via Quo (OpenPhone)</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1367,6 +1517,15 @@ export default function SettingsDocumentation() {
                   >
                     <AlertTriangle className="w-4 h-4 mr-2" />
                     Troubleshooting
+                  </Button>
+                  <Button
+                    variant={selectedDoc === 'integration-status' ? 'secondary' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => handleDocSelect('integration-status')}
+                    data-testid="link-integration-status"
+                  >
+                    <Activity className="w-4 h-4 mr-2" />
+                    Integration Status
                   </Button>
                   <Button
                     variant={selectedDoc === 'changelog' ? 'secondary' : 'ghost'}

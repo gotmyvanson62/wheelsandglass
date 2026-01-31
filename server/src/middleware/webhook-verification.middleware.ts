@@ -8,9 +8,13 @@ import crypto from 'crypto';
 export function verifyQuoSignature(req: Request, res: Response, next: NextFunction) {
   const webhookSecret = process.env.QUO_WEBHOOK_SECRET;
 
-  // Skip verification in development if not configured
+  // SECURITY: Require webhook secret in production
   if (!webhookSecret) {
-    console.warn('[WEBHOOK] Quo webhook secret not configured - skipping signature verification');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[SECURITY] QUO_WEBHOOK_SECRET not configured in production - rejecting webhook');
+      return res.status(500).json({ error: 'Webhook verification not configured' });
+    }
+    console.warn('[WEBHOOK] Quo webhook secret not configured - skipping verification in development');
     return next();
   }
 
@@ -70,9 +74,13 @@ export function verifyTwilioSignature(req: Request, res: Response, next: NextFun
 export function verifySquareSignature(req: Request, res: Response, next: NextFunction) {
   const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
 
-  // Skip verification in development if not configured
+  // SECURITY: Require webhook signature key in production
   if (!signatureKey) {
-    console.warn('[WEBHOOK] Square webhook signature key not configured - skipping signature verification');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[SECURITY] SQUARE_WEBHOOK_SIGNATURE_KEY not configured in production - rejecting webhook');
+      return res.status(500).json({ error: 'Webhook verification not configured' });
+    }
+    console.warn('[WEBHOOK] Square webhook signature key not configured - skipping verification in development');
     return next();
   }
 

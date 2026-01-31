@@ -138,13 +138,73 @@ router.post('/square-booking', captureRawBody, verifySquareSignature, async (req
 
 // POST /api/webhooks/square-payment - Square payment webhook
 // Apply raw body capture and Square signature verification
+// Processes payment.completed events to update transaction status and customer totals
 router.post('/square-payment', captureRawBody, verifySquareSignature, async (req: Request, res: Response) => {
   try {
     console.log('Square payment webhook received:', JSON.stringify(req.body, null, 2));
 
+    const eventType = req.body.type;
+    const paymentData = req.body.data?.object?.payment;
+
+    // Process payment.completed events
+    if (eventType === 'payment.completed' && paymentData) {
+      const referenceId = paymentData.reference_id;
+      const squarePaymentId = paymentData.id;
+      const amountPaid = paymentData.amount_money?.amount || 0;
+
+      console.log(`[SQUARE WEBHOOK] Payment completed: ${squarePaymentId}, ref: ${referenceId}, amount: ${amountPaid}`);
+
+      // Try to find the transaction by reference ID (format: "TXN-{id}" or just the ID)
+      let transactionId: number | null = null;
+      if (referenceId) {
+        // Extract numeric ID from reference (handles "TXN-123" or "123" formats)
+        const match = referenceId.match(/(\d+)/);
+        if (match) {
+          transactionId = parseInt(match[1]);
+        }
+      }
+
+      if (transactionId) {
+        const transaction = await storage.getTransaction(transactionId);
+        if (transaction) {
+          // Update transaction with payment info
+          await storage.updateTransaction(transactionId, {
+            paymentStatus: 'paid',
+            status: 'success',
+            squarePaymentId: squarePaymentId,
+            finalPrice: amountPaid,
+          });
+
+          console.log(`[SQUARE WEBHOOK] Transaction ${transactionId} updated to paid`);
+
+          // Recalculate customer totals if customer is linked
+          if (transaction.customerId) {
+            const updatedCustomer = await storage.recalculateCustomerTotals(transaction.customerId);
+            console.log(`[SQUARE WEBHOOK] Customer ${transaction.customerId} totals updated:`, {
+              totalSpent: updatedCustomer?.totalSpent,
+              totalJobs: updatedCustomer?.totalJobs,
+            });
+          }
+
+          await storage.createActivityLog({
+            type: 'square_payment_completed',
+            message: `Payment of $${(amountPaid / 100).toFixed(2)} completed for transaction #${transactionId}`,
+            details: {
+              transactionId,
+              squarePaymentId,
+              amountPaid,
+              customerId: transaction.customerId,
+              customerTotalsUpdated: !!transaction.customerId,
+            },
+          });
+        }
+      }
+    }
+
+    // Log all webhook events for debugging
     await storage.createActivityLog({
       type: 'square_payment_webhook',
-      message: `Square payment webhook: ${req.body.type || 'payment.created'}`,
+      message: `Square payment webhook: ${eventType || 'unknown'}`,
       details: req.body,
     });
 

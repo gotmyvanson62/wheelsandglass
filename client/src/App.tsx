@@ -28,6 +28,7 @@ import WindshieldRepair from "@/pages/windshield-repair";
 import Insurance from "@/pages/insurance";
 import AgentPortal from "@/pages/agent-portal";
 import ServiceAreas from "@/pages/service-areas";
+import QuotePage from "@/pages/quote";
 
 
 // Admin redirect component - Check authentication first
@@ -72,6 +73,9 @@ function Router() {
       <Route path="/insurance" component={Insurance} />
       <Route path="/agentportal" component={AgentPortal} />
       
+      {/* Quote Page - Public page for getting quotes */}
+      <Route path="/quote" component={QuotePage} />
+
       {/* Service Areas - Public page with state subpages */}
       <Route path="/service-areas/:state?" component={ServiceAreas} />
       

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList, ArrowRight, Clock, User, Car } from 'lucide-react';
-import { format, isValid } from 'date-fns';
+import { formatDate } from '@/lib/date-utils';
 
 interface QuoteSubmission {
   id: number;
@@ -16,17 +16,6 @@ interface QuoteSubmission {
   make: string | null;
   model: string | null;
   status: string;
-}
-
-function formatDate(dateValue: any, formatStr: string, fallback: string = '--'): string {
-  if (!dateValue) return fallback;
-  const date = new Date(dateValue);
-  if (!isValid(date)) return fallback;
-  try {
-    return format(date, formatStr);
-  } catch {
-    return fallback;
-  }
 }
 
 export function QuoteRequestsWidget() {

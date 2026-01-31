@@ -1,7 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
+
+// SECURITY: All dashboard routes require authentication
+router.use(authMiddleware);
 
 // GET /api/dashboard/stats - Get dashboard statistics
 router.get('/stats', async (_req: Request, res: Response) => {
@@ -95,7 +99,7 @@ router.get('/activity', async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
     const activityLogs = await storage.getActivityLogs(limit);
-    res.json(activityLogs);
+    res.json({ success: true, data: activityLogs });
   } catch (error) {
     console.error('Error fetching activity:', error);
     res.status(500).json({ error: 'Failed to fetch activity' });
@@ -113,10 +117,10 @@ router.get('/transactions', async (req: Request, res: Response) => {
       offset: parseInt(offset as string),
     });
 
-    res.json(transactions);
+    res.json({ success: true, data: transactions });
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    res.status(500).json({ error: 'Failed to fetch transactions' });
+    res.status(500).json({ success: false, error: 'Failed to fetch transactions' });
   }
 });
 
@@ -131,18 +135,21 @@ router.get('/summary', async (_req: Request, res: Response) => {
     ).length;
 
     res.json({
-      totalTransactions: stats.total,
-      successfulTransactions: stats.success,
-      failedTransactions: stats.failed,
-      pendingTransactions: stats.pending,
-      pendingAppointments,
-      successRate: stats.total > 0
-        ? Math.round((stats.success / stats.total) * 100)
-        : 0,
+      success: true,
+      data: {
+        totalTransactions: stats.total,
+        successfulTransactions: stats.success,
+        failedTransactions: stats.failed,
+        pendingTransactions: stats.pending,
+        pendingAppointments,
+        successRate: stats.total > 0
+          ? Math.round((stats.success / stats.total) * 100)
+          : 0,
+      }
     });
   } catch (error) {
     console.error('Error fetching summary:', error);
-    res.status(500).json({ error: 'Failed to fetch summary' });
+    res.status(500).json({ success: false, error: 'Failed to fetch summary' });
   }
 });
 

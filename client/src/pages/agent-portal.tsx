@@ -138,9 +138,6 @@ export default function AgentPortal() {
                 ← Back to Home
               </Button>
             </Link>
-            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-              Insurance Agent Portal
-            </Badge>
           </div>
         </div>
       </div>

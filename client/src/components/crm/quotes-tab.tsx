@@ -19,9 +19,13 @@ import {
   CheckCircle,
   Clock,
   FileText,
-  RefreshCw
+  RefreshCw,
+  CircleDot,
+  Loader2
 } from 'lucide-react';
-import { format, isValid } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { apiClient } from '@/lib/api-client';
+import { formatDate } from '@/lib/date-utils';
 
 interface QuoteSubmission {
   id: number;
@@ -40,6 +44,8 @@ interface QuoteSubmission {
   vin: string | null;
   notes: string | null;
   selectedWindows: string[];
+  selectedWheels?: string[];  // For wheels division quotes
+  division?: 'glass' | 'wheels';  // Quote division type
   uploadedFiles: Array<{ name: string; size: number; type: string }>;
   status: string;
   processedAt: string | null;
@@ -47,17 +53,6 @@ interface QuoteSubmission {
 
 interface QuotesTabProps {
   onOpenJobRecord?: (jobId: string) => void;
-}
-
-function formatDate(dateValue: any, formatStr: string, fallback: string = '--'): string {
-  if (!dateValue) return fallback;
-  const date = new Date(dateValue);
-  if (!isValid(date)) return fallback;
-  try {
-    return format(date, formatStr);
-  } catch {
-    return fallback;
-  }
 }
 
 function getStatusBadge(status: string) {
@@ -96,7 +91,21 @@ function getPaymentBadge(status: string) {
 }
 
 function getEstimatedAmount(quote: QuoteSubmission): string {
-  // Estimate based on service type and number of windows
+  // Handle wheels division pricing
+  if (quote.division === 'wheels') {
+    const wheelCount = quote.selectedWheels?.length || 1;
+    const wheelPricing: Record<string, number> = {
+      'Curb Rash Repair': 150,
+      'Wheel Refinishing': 200,
+      'Powder Coating': 275,
+      'Scratch Repair': 125,
+      'default': 175
+    };
+    const basePrice = wheelPricing[quote.serviceType] || wheelPricing.default;
+    return `$${(basePrice * wheelCount).toFixed(2)}`;
+  }
+
+  // Glass division pricing
   const windowCount = quote.selectedWindows?.length || 1;
   const serviceMultiplier: Record<string, number> = {
     'Windshield Replacement': 285,
@@ -114,10 +123,12 @@ function getEstimatedAmount(quote: QuoteSubmission): string {
 }
 
 export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedQuote, setSelectedQuote] = useState<QuoteSubmission | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   // Fetch quote submissions
   const { data: quotesData, isLoading, refetch } = useQuery<{
@@ -158,6 +169,29 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
   const openQuoteDetails = (quote: QuoteSubmission) => {
     setSelectedQuote(quote);
     setDetailsOpen(true);
+  };
+
+  const handleConvertToJob = async (quoteId: number) => {
+    setIsConverting(true);
+    try {
+      const response = await apiClient.post(`/api/quote/submissions/${quoteId}/convert-to-job`);
+      if (response.data.success) {
+        toast({
+          title: 'Quote Converted',
+          description: `Job #${response.data.jobId} created successfully`,
+        });
+        setDetailsOpen(false);
+        refetch();
+      }
+    } catch (error) {
+      toast({
+        title: 'Conversion Failed',
+        description: 'Unable to convert quote to job. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   return (
@@ -286,6 +320,7 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
                   <tr className="border-b dark:border-gray-700 text-left text-xs text-gray-500 dark:text-gray-400">
                     <th className="pb-3 font-medium">Date</th>
                     <th className="pb-3 font-medium">Customer</th>
+                    <th className="pb-3 font-medium hidden sm:table-cell">Type</th>
                     <th className="pb-3 font-medium hidden md:table-cell">Vehicle</th>
                     <th className="pb-3 font-medium hidden lg:table-cell">Location</th>
                     <th className="pb-3 font-medium">Status</th>
@@ -317,6 +352,17 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
                           <Phone className="w-3 h-3" />
                           {quote.mobilePhone}
                         </div>
+                      </td>
+                      <td className="py-3 hidden sm:table-cell">
+                        <Badge className={quote.division === 'wheels'
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'}>
+                          {quote.division === 'wheels' ? (
+                            <><CircleDot className="w-3 h-3 mr-1" />Wheels</>
+                          ) : (
+                            <><Car className="w-3 h-3 mr-1" />Glass</>
+                          )}
+                        </Badge>
                       </td>
                       <td className="py-3 hidden md:table-cell">
                         <div className="text-sm">
@@ -379,9 +425,20 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
 
           {selectedQuote && (
             <div className="space-y-6">
-              {/* Status and Date */}
+              {/* Status, Division and Date */}
               <div className="flex items-center justify-between">
-                {getStatusBadge(selectedQuote.status)}
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(selectedQuote.status)}
+                  <Badge className={selectedQuote.division === 'wheels'
+                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'}>
+                    {selectedQuote.division === 'wheels' ? (
+                      <><CircleDot className="w-3 h-3 mr-1" />Wheels</>
+                    ) : (
+                      <><Car className="w-3 h-3 mr-1" />Glass</>
+                    )}
+                  </Badge>
+                </div>
                 <span className="text-sm text-gray-500">
                   Submitted {formatDate(selectedQuote.timestamp, 'MMM d, yyyy h:mm a')}
                 </span>
@@ -448,7 +505,11 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
               {/* Service Details */}
               <div className="space-y-3">
                 <h4 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
+                  {selectedQuote.division === 'wheels' ? (
+                    <CircleDot className="w-4 h-4 text-orange-500" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
                   Service Details
                 </h4>
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
@@ -456,38 +517,65 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Service Type</p>
                     <p className="font-medium dark:text-gray-200">{selectedQuote.serviceType}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Selected Windows</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedQuote.selectedWindows?.map((window, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {window}
-                        </Badge>
-                      ))}
+                  {/* Show wheels for wheels division */}
+                  {selectedQuote.division === 'wheels' && selectedQuote.selectedWheels && selectedQuote.selectedWheels.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Selected Wheels</p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {selectedQuote.selectedWheels.map((wheel, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                            {wheel.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {/* Show windows for glass division */}
+                  {selectedQuote.division !== 'wheels' && selectedQuote.selectedWindows && selectedQuote.selectedWindows.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Selected Windows</p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {selectedQuote.selectedWindows.map((window, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {window}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {selectedQuote.notes && (
                     <div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">Notes</p>
                       <p className="text-sm dark:text-gray-200">{selectedQuote.notes}</p>
                     </div>
                   )}
+                  {/* Estimated Amount */}
+                  <div className="pt-2 border-t dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Estimated Amount</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{getEstimatedAmount(selectedQuote)}</p>
+                  </div>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-                <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+                <Button variant="outline" onClick={() => setDetailsOpen(false)} disabled={isConverting}>
                   Close
                 </Button>
                 <Button
-                  onClick={() => {
-                    // TODO: Implement convert to job functionality
-                    console.log('Convert to job:', selectedQuote.id);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => handleConvertToJob(selectedQuote.id)}
+                  disabled={isConverting || selectedQuote.status === 'converted'}
+                  className={selectedQuote.division === 'wheels'
+                    ? 'bg-orange-500 hover:bg-orange-600'
+                    : 'bg-blue-600 hover:bg-blue-700'}
                 >
-                  Convert to Job
+                  {isConverting ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Converting...</>
+                  ) : selectedQuote.status === 'converted' ? (
+                    <><CheckCircle className="w-4 h-4 mr-2" />Already Converted</>
+                  ) : (
+                    'Convert to Job'
+                  )}
                 </Button>
               </div>
             </div>

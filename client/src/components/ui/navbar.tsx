@@ -21,7 +21,7 @@ export function Navbar({ className = "" }: NavbarProps) {
       <div className="flex items-center">
         <img 
           src="/assets/express-auto-glass-logo.png" 
-          alt="Express Auto Glass" 
+          alt="Wheels and Glass" 
           className="h-8 w-auto"
         />
       </div>

@@ -79,9 +79,6 @@ export default function Insurance() {
                 ← Back to Home
               </Button>
             </Link>
-            <Badge variant="secondary">
-              Insurance Claims Made Easy
-            </Badge>
           </div>
         </div>
       </div>

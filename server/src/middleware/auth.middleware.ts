@@ -15,7 +15,8 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+// SECURITY: Require JWT_SECRET for authentication - no fallback to SESSION_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Verify JWT token and attach user to request
@@ -53,10 +54,8 @@ function extractToken(req: Request): string | undefined {
     }
   }
 
-  // Check query param (for webhook testing, etc.)
-  if (typeof req.query.token === 'string') {
-    return req.query.token;
-  }
+  // SECURITY: Token in query params removed - tokens in URLs can be logged and exposed
+  // Use Authorization header or cookies instead
 
   return undefined;
 }
@@ -66,9 +65,16 @@ function extractToken(req: Request): string | undefined {
  * Requires valid JWT token to proceed
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Skip auth check if JWT_SECRET is not configured (development without auth)
+  // SECURITY: Require JWT_SECRET - fail if not configured in production
   if (!JWT_SECRET) {
-    console.warn('[AUTH] JWT_SECRET not configured - skipping authentication');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[SECURITY] JWT_SECRET not configured in production - rejecting request');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error',
+      });
+    }
+    console.warn('[AUTH] JWT_SECRET not configured - allowing request in development');
     return next();
   }
 
@@ -101,6 +107,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
  */
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[AUTH] JWT_SECRET not configured in production - optional auth skipped');
+    }
     return next();
   }
 
@@ -138,4 +147,105 @@ export function adminOnlyMiddleware(req: Request, res: Response, next: NextFunct
 
     next();
   });
+}
+
+/**
+ * IDOR (Insecure Direct Object Reference) Protection
+ * Factory function that creates middleware to verify resource ownership
+ *
+ * @param getOwnerId - Async function that retrieves the owner ID for the requested resource
+ * @param options - Configuration options
+ */
+export function ownershipCheck(
+  getOwnerId: (req: Request) => Promise<number | string | null>,
+  options: {
+    allowAdmin?: boolean;      // Allow admins to bypass ownership check
+    paramName?: string;        // Name of URL param to use as resource ID
+    errorMessage?: string;     // Custom error message
+  } = {}
+) {
+  const { allowAdmin = true, errorMessage = 'Access denied: you do not own this resource' } = options;
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Must be authenticated first
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
+
+    // Allow admins to bypass if configured
+    if (allowAdmin && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+      return next();
+    }
+
+    try {
+      const ownerId = await getOwnerId(req);
+
+      if (ownerId === null) {
+        // Resource not found
+        return res.status(404).json({
+          success: false,
+          message: 'Resource not found',
+        });
+      }
+
+      // Get current user's ID (from JWT payload or username)
+      const currentUserId = req.user.username;
+
+      // Compare ownership
+      if (String(ownerId) !== String(currentUserId)) {
+        console.warn(`[SECURITY] IDOR attempt blocked: user ${currentUserId} tried to access resource owned by ${ownerId}`);
+        return res.status(403).json({
+          success: false,
+          message: errorMessage,
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('[SECURITY] Ownership check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error verifying resource ownership',
+      });
+    }
+  };
+}
+
+/**
+ * Helper to create ownership check for quote submissions
+ * Verifies the authenticated user owns the quote submission
+ */
+export function quoteOwnershipCheck() {
+  return ownershipCheck(
+    async (req) => {
+      const { storage } = await import('../storage.js');
+      const submissionId = parseInt(req.params.id);
+      if (isNaN(submissionId)) return null;
+
+      const submission = await storage.getQuoteSubmission(submissionId);
+      return submission?.email || null; // Email is the identifier
+    },
+    { allowAdmin: true, errorMessage: 'Access denied: you do not own this quote' }
+  );
+}
+
+/**
+ * Helper to create ownership check for customers
+ * Verifies the authenticated user is accessing their own customer record
+ */
+export function customerOwnershipCheck() {
+  return ownershipCheck(
+    async (req) => {
+      const { storage } = await import('../storage.js');
+      const customerId = parseInt(req.params.id);
+      if (isNaN(customerId)) return null;
+
+      const customer = await storage.getCustomer(customerId);
+      return customer?.primaryEmail || null;
+    },
+    { allowAdmin: true, errorMessage: 'Access denied: you do not own this customer record' }
+  );
 }

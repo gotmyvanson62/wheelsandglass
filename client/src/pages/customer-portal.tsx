@@ -57,7 +57,7 @@ export default function CustomerPortal() {
               <Calendar className="w-6 h-6 md:w-8 md:h-8 text-blue-500" />
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Customer Portal</h1>
-            <p className="text-sm md:text-base text-gray-600">Express Auto Glass</p>
+            <p className="text-sm md:text-base text-gray-600">Wheels and Glass</p>
           </div>
           
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">

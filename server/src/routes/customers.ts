@@ -1,8 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
+
+// SECURITY: All customer routes require authentication
+router.use(authMiddleware);
 
 /**
  * GET /api/customers
@@ -31,10 +35,13 @@ router.get('/', async (req: Request, res: Response) => {
     const paginatedCustomers = customers.slice(offsetNum, offsetNum + limitNum);
 
     res.json({
-      customers: paginatedCustomers,
-      total: customers.length,
-      limit: limitNum,
-      offset: offsetNum
+      success: true,
+      data: {
+        customers: paginatedCustomers,
+        total: customers.length,
+        limit: limitNum,
+        offset: offsetNum
+      }
     });
 
   } catch (error) {
@@ -61,10 +68,10 @@ router.get('/:id', async (req: Request, res: Response) => {
     const customer = await storage.getCustomer(id);
 
     if (!customer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      return res.status(404).json({ success: false, error: 'Customer not found' });
     }
 
-    res.json(customer);
+    res.json({ success: true, data: customer });
 
   } catch (error) {
     console.error('Error fetching customer:', error);
@@ -98,18 +105,21 @@ router.get('/:id/history', async (req: Request, res: Response) => {
     const history = await storage.getCustomerHistory(id);
 
     res.json({
-      customer,
-      history: {
-        quotes: history.quotes,
-        appointments: history.appointments,
-        transactions: history.transactions,
-        summary: {
-          totalQuotes: history.quotes.length,
-          totalAppointments: history.appointments.length,
-          totalTransactions: history.transactions.length,
-          totalJobs: customer.totalJobs || 0,
-          totalSpent: customer.totalSpent || 0,
-          lastJobDate: customer.lastJobDate
+      success: true,
+      data: {
+        customer,
+        history: {
+          quotes: history.quotes,
+          appointments: history.appointments,
+          transactions: history.transactions,
+          summary: {
+            totalQuotes: history.quotes.length,
+            totalAppointments: history.appointments.length,
+            totalTransactions: history.transactions.length,
+            totalJobs: customer.totalJobs || 0,
+            totalSpent: customer.totalSpent || 0,
+            lastJobDate: customer.lastJobDate
+          }
         }
       }
     });
@@ -276,10 +286,10 @@ router.get('/search/email/:email', async (req: Request, res: Response) => {
     const customer = await storage.getCustomerByEmail(email);
 
     if (!customer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      return res.status(404).json({ success: false, error: 'Customer not found' });
     }
 
-    res.json(customer);
+    res.json({ success: true, data: customer });
 
   } catch (error) {
     console.error('Error searching customer by email:', error);
@@ -301,10 +311,10 @@ router.get('/search/phone/:phone', async (req: Request, res: Response) => {
     const customer = await storage.getCustomerByPhone(phone);
 
     if (!customer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      return res.status(404).json({ success: false, error: 'Customer not found' });
     }
 
-    res.json(customer);
+    res.json({ success: true, data: customer });
 
   } catch (error) {
     console.error('Error searching customer by phone:', error);
@@ -350,7 +360,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         : 0,
     };
 
-    res.json(stats);
+    res.json({ success: true, data: stats });
 
   } catch (error) {
     console.error('Error fetching customer stats:', error);

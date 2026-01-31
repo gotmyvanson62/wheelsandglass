@@ -18,8 +18,6 @@ export default function AdminLogin() {
     setIsLoading(true);
     setError('');
 
-    console.log('Login attempt with password:', password.length > 0 ? '[REDACTED]' : 'EMPTY');
-
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
@@ -30,20 +28,15 @@ export default function AdminLogin() {
         body: JSON.stringify({ password }),
       });
 
-      console.log('Login response status:', response.status);
       const data = await response.json();
-      console.log('Login response data:', data);
-      
+
       if (response.ok && data.success) {
-        console.log('Login successful, redirecting to dashboard');
         // Password correct, redirect to dashboard
         setLocation('/admin/dashboard');
       } else {
-        console.log('Login failed:', data.message);
         setError(data.message || 'Invalid password. Please try again.');
       }
     } catch (err) {
-      console.error('Login error:', err);
       setError('Connection error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -59,7 +52,7 @@ export default function AdminLogin() {
               <Car className="w-8 h-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Express Auto Glass</CardTitle>
+          <CardTitle className="text-2xl font-bold">Wheels and Glass</CardTitle>
           <CardDescription>
             Admin Portal Access
           </CardDescription>
@@ -99,9 +92,6 @@ export default function AdminLogin() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Secure access to integration management</p>
-          </div>
         </CardContent>
       </Card>
     </div>

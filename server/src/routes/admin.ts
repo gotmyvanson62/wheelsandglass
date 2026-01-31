@@ -1,12 +1,40 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { storage } from '../storage.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// SECURITY: Aggressive rate limiting for login endpoint to prevent brute-force attacks
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Only 5 login attempts per 15 minutes per IP
+  message: {
+    success: false,
+    message: 'Too many login attempts. Please try again in 15 minutes.',
+  },
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+  // Skip successful requests (only count failures)
+  skipSuccessfulRequests: true,
+});
+
+// SECURITY: Stricter rate limit for password change endpoint
+const passwordChangeRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Only 3 password change attempts per hour per IP
+  message: {
+    success: false,
+    message: 'Too many password change attempts. Please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Validation schemas for user management
 const createUserSchema = z.object({
@@ -26,8 +54,9 @@ const updateUserSchema = z.object({
 /**
  * POST /api/admin/login
  * Admin authentication endpoint
+ * SECURITY: Rate limited to prevent brute-force attacks
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   try {
     const { password } = req.body;
 
@@ -65,10 +94,22 @@ router.post('/login', async (req, res) => {
       }
     });
 
+    // SECURITY: Set token as httpOnly cookie instead of returning in body
+    // This prevents XSS attacks from stealing the token
+    res.cookie('admin_token', token, {
+      httpOnly: true, // SECURITY: Not accessible via JavaScript
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/',
+    });
+
     console.log('[AUTH] Admin login successful');
     res.json({
       success: true,
       message: 'Login successful',
+      // SECURITY: Also return token for backwards compatibility during migration
+      // Can be removed once client fully uses cookies
       token
     });
   } catch (error) {
@@ -84,8 +125,9 @@ router.post('/login', async (req, res) => {
  * POST /api/admin/reset
  * Clears all transactional data for fresh testing
  * Preserves configurations and field mappings
+ * SECURITY: Requires authentication - destructive operation
  */
-router.post('/reset', async (req, res) => {
+router.post('/reset', authMiddleware, async (req, res) => {
   try {
     console.log('[ADMIN] Reset data request received');
 
@@ -119,8 +161,9 @@ router.post('/reset', async (req, res) => {
 /**
  * GET /api/admin/status
  * Returns current data counts for verification
+ * SECURITY: Requires authentication
  */
-router.get('/status', async (req, res) => {
+router.get('/status', authMiddleware, async (req, res) => {
   try {
     const [transactions, quotes, activities, customers] = await Promise.all([
       storage.getTransactions(),
@@ -155,8 +198,9 @@ router.get('/status', async (req, res) => {
 /**
  * GET /api/admin/users
  * List all admin users
+ * SECURITY: Requires authentication
  */
-router.get('/users', async (req, res) => {
+router.get('/users', authMiddleware, async (req, res) => {
   try {
     const users = await storage.getAdminUsers();
     // Remove password field from response
@@ -171,8 +215,9 @@ router.get('/users', async (req, res) => {
 /**
  * POST /api/admin/users
  * Create a new admin user
+ * SECURITY: Requires authentication
  */
-router.post('/users', async (req, res) => {
+router.post('/users', authMiddleware, async (req, res) => {
   try {
     const validationResult = createUserSchema.safeParse(req.body);
     if (!validationResult.success) {
@@ -215,8 +260,9 @@ router.post('/users', async (req, res) => {
 /**
  * PUT /api/admin/users/:id
  * Update an admin user
+ * SECURITY: Requires authentication
  */
-router.put('/users/:id', async (req, res) => {
+router.put('/users/:id', authMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -269,8 +315,9 @@ router.put('/users/:id', async (req, res) => {
 /**
  * DELETE /api/admin/users/:id
  * Delete an admin user
+ * SECURITY: Requires authentication
  */
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', authMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -304,8 +351,9 @@ router.delete('/users/:id', async (req, res) => {
 /**
  * PUT /api/admin/password
  * Change password for the current user or specified user
+ * SECURITY: Requires authentication
  */
-router.put('/password', async (req, res) => {
+router.put('/password', passwordChangeRateLimit, authMiddleware, async (req, res) => {
   try {
     const { userId, currentPassword, newPassword } = req.body;
 

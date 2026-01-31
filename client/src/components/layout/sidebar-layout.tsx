@@ -142,23 +142,25 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
           </div>
         </div>
 
-        {/* Mobile Page Header */}
-        <div className="pt-12 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 py-2 transition-colors">
-          <div className="flex items-center justify-between">
-            <h1 className="text-base font-medium text-gray-900 dark:text-gray-100">Express Auto Glass</h1>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Admin Portal</span>
-          </div>
-        </div>
-
         {/* Mobile Navigation Overlay */}
         {isSidebarOpen && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setIsSidebarOpen(false)}>
-            <div className="fixed top-0 left-0 w-64 h-full bg-white dark:bg-gray-800 shadow-lg transition-colors" onClick={(e) => e.stopPropagation()}>
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="fixed inset-0 z-50 bg-black/50 transition-opacity" onClick={() => setIsSidebarOpen(false)}>
+            <div
+              className="fixed top-0 left-0 w-72 h-full bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-200 ease-out"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-500 to-teal-600">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Navigation</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setIsSidebarOpen(false)}>
-                    <X className="w-4 h-4" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <Car className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold text-white">Admin Portal</h2>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setIsSidebarOpen(false)} className="text-white hover:bg-white/20">
+                    <X className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
@@ -182,7 +184,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
                   <div className="border-t border-gray-200 dark:border-gray-600 my-2"></div>
 
                   {navigation.map((item) => {
-                    const isActive = location === item.href;
+                    const isActive = location === item.href || location.startsWith(item.href + '/');
                     const Icon = item.icon;
 
                     return (
@@ -211,7 +213,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
         )}
         
         {/* Mobile Content */}
-        <div className="p-2 bg-white dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="pt-14 p-2 bg-white dark:bg-gray-900 min-h-screen transition-colors">
           {children}
         </div>
       </div>
@@ -274,7 +276,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
             <div className={`flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
               {isSidebarOpen && (
                 <div className="flex items-center">
-                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tracking-wide">Express Auto Glass</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tracking-wide">Wheels and Glass</span>
                 </div>
               )}
               <Button
@@ -310,7 +312,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
           <nav className={`flex-1 ${isSidebarOpen ? 'p-2 md:p-4' : 'p-1'}`}>
             <div className={`${isSidebarOpen ? 'space-y-1 md:space-y-2' : 'space-y-3'}`}>
               {navigation.map((item) => {
-                const isActive = location === item.href;
+                const isActive = location === item.href || location.startsWith(item.href + '/');
                 const Icon = item.icon;
                 
                 return (
@@ -378,7 +380,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
               >
                 <Menu className="w-4 h-4" />
               </Button>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Express Auto Glass</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Wheels and Glass</span>
             </div>
             <span className="text-xs text-gray-600 dark:text-gray-400">
               {navigation.find(item => item.href === location)?.name || 'Dashboard'}

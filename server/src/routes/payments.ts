@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
@@ -14,8 +15,8 @@ const createPaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
-// GET /api/payments - List payments
-router.get('/', async (_req: Request, res: Response) => {
+// GET /api/payments - List payments (protected)
+router.get('/', authMiddleware, async (_req: Request, res: Response) => {
   try {
     // Extract payments from successful transactions
     const transactions = await storage.getTransactions();
@@ -42,8 +43,8 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/payments/:id
-router.get('/:id', async (req: Request, res: Response) => {
+// GET /api/payments/:id (protected)
+router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const transaction = await storage.getTransaction(id);
@@ -76,8 +77,9 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/payments - Create payment
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/payments - Create payment (protected)
+// Updates customer totals when customerId is provided
+router.post('/', authMiddleware, async (req: Request, res: Response) => {
   try {
     // Validate request body
     const validationResult = createPaymentSchema.safeParse(req.body);
@@ -92,13 +94,42 @@ router.post('/', async (req: Request, res: Response) => {
 
     const paymentData = validationResult.data;
 
+    // If there's a linked transaction, update its payment status
+    if (paymentData.transactionId) {
+      const transaction = await storage.getTransaction(paymentData.transactionId);
+      if (transaction) {
+        await storage.updateTransaction(paymentData.transactionId, {
+          paymentStatus: 'paid',
+          finalPrice: paymentData.amount,
+        });
+      }
+    }
+
+    // Update customer totals if customerId is provided
+    let updatedCustomer = null;
+    if (paymentData.customerId) {
+      updatedCustomer = await storage.recalculateCustomerTotals(paymentData.customerId);
+      console.log(`[PAYMENT] Updated customer ${paymentData.customerId} totals:`, {
+        totalSpent: updatedCustomer?.totalSpent,
+        totalJobs: updatedCustomer?.totalJobs,
+        lastJobDate: updatedCustomer?.lastJobDate,
+      });
+    }
+
     await storage.createActivityLog({
       type: 'payment_created',
-      message: `Payment received for $${(paymentData.amount / 100).toFixed(2)}`,
-      details: paymentData,
+      message: `Payment received for $${(paymentData.amount / 100).toFixed(2)}${paymentData.customerId ? ` - Customer #${paymentData.customerId} totals updated` : ''}`,
+      details: {
+        ...paymentData,
+        customerTotalsUpdated: !!updatedCustomer,
+      },
     });
 
-    res.status(201).json({ success: true, message: 'Payment recorded' });
+    res.status(201).json({
+      success: true,
+      message: 'Payment recorded',
+      customerTotalsUpdated: !!updatedCustomer,
+    });
   } catch (error) {
     console.error('Error creating payment:', error);
     res.status(500).json({ error: 'Failed to create payment' });

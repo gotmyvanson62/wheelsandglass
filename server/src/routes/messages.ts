@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
@@ -65,9 +66,9 @@ function getOrCreateConversation(
 
 /**
  * GET /api/messages/technician/:id
- * Get conversation history with a technician
+ * Get conversation history with a technician (protected)
  */
-router.get('/technician/:id', async (req: Request, res: Response) => {
+router.get('/technician/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const technicianId = parseInt(req.params.id);
 
@@ -110,9 +111,9 @@ router.get('/technician/:id', async (req: Request, res: Response) => {
 
 /**
  * POST /api/messages/technician/:id
- * Send a message to a technician
+ * Send a message to a technician (protected)
  */
-router.post('/technician/:id', async (req: Request, res: Response) => {
+router.post('/technician/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const technicianId = parseInt(req.params.id);
 
@@ -201,9 +202,9 @@ router.post('/technician/:id', async (req: Request, res: Response) => {
 
 /**
  * POST /api/messages/technician/:id/simulate-reply
- * Simulate a technician reply (for demo purposes)
+ * Simulate a technician reply (for demo purposes) (protected)
  */
-router.post('/technician/:id/simulate-reply', async (req: Request, res: Response) => {
+router.post('/technician/:id/simulate-reply', authMiddleware, async (req: Request, res: Response) => {
   try {
     const technicianId = parseInt(req.params.id);
 
@@ -267,9 +268,9 @@ router.post('/technician/:id/simulate-reply', async (req: Request, res: Response
 
 /**
  * PATCH /api/messages/technician/:id/read
- * Mark all messages in a conversation as read
+ * Mark all messages in a conversation as read (protected)
  */
-router.patch('/technician/:id/read', async (req: Request, res: Response) => {
+router.patch('/technician/:id/read', authMiddleware, async (req: Request, res: Response) => {
   try {
     const technicianId = parseInt(req.params.id);
 
@@ -308,9 +309,9 @@ router.patch('/technician/:id/read', async (req: Request, res: Response) => {
 
 /**
  * GET /api/messages/conversations
- * Get all conversations (for messaging hub)
+ * Get all conversations (for messaging hub) (protected)
  */
-router.get('/conversations', async (req: Request, res: Response) => {
+router.get('/conversations', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { type } = req.query;
 

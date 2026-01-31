@@ -378,7 +378,7 @@ export function InteractiveUSMap({ onRequestQuote }: InteractiveUSMapProps) {
                     >
                       <span className="text-left">
                         <div className="font-medium">{city}</div>
-                        <div className="text-xs text-gray-500">Express Auto Glass service area</div>
+                        <div className="text-xs text-gray-500">Wheels and Glass service area</div>
                       </span>
                       <Calendar className="w-4 h-4 text-blue-600" />
                     </Button>

@@ -18,8 +18,6 @@ export default function AdminLoginFixed() {
     setError('');
     setSuccess(false);
 
-    console.log('🔑 Starting login process...');
-
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
@@ -30,26 +28,20 @@ export default function AdminLoginFixed() {
         body: JSON.stringify({ password }),
       });
 
-      console.log('📡 Login response:', response.status);
       const data = await response.json();
-      console.log('📦 Login data:', data);
-      
+
       if (response.ok && data.success) {
-        console.log('✅ Login successful');
         setSuccess(true);
-        
+
         // Wait a bit for session to be established, especially on mobile
         setTimeout(() => {
-          console.log('✅ Redirecting to dashboard...');
           // Force page reload for mobile compatibility
           window.location.replace('/admin/dashboard');
         }, 1500);
       } else {
-        console.log('❌ Login failed:', data.message);
         setError(data.message || 'Invalid password. Please try again.');
       }
     } catch (err) {
-      console.error('💥 Login error:', err);
       setError('Connection error. Please try again.');
     } finally {
       // Don't set loading to false immediately on success to show success state
@@ -87,7 +79,7 @@ export default function AdminLoginFixed() {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Express Auto Glass</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900">Wheels and Glass</CardTitle>
             <CardDescription className="text-gray-600 mt-2">
               Admin Portal Access
             </CardDescription>
@@ -130,11 +122,6 @@ export default function AdminLoginFixed() {
             </Button>
           </form>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-500">
-              Secure access to integration management
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

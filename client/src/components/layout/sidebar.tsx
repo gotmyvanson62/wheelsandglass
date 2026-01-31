@@ -48,7 +48,7 @@ export function Sidebar() {
               <Layers className="w-6 h-6 text-white" />
             </div>
             <div className="ml-3">
-              <h1 className="text-lg font-semibold text-gray-900">Express Auto Glass</h1>
+              <h1 className="text-lg font-semibold text-gray-900">Wheels and Glass</h1>
               <p className="text-xs text-gray-500">Integration Hub</p>
             </div>
           </div>

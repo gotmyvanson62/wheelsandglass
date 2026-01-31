@@ -16,7 +16,7 @@ A comprehensive Squarespace to Omega EDI integration platform for auto glass ser
 - **Frontend**: React 18 + TypeScript + Vite + shadcn/ui + TailwindCSS
 - **Backend**: Node.js + Express + TypeScript + Drizzle ORM
 - **Database**: PostgreSQL with comprehensive schema for business operations
-- **Integration**: Omega EDI + Square Payments + Twilio + VIN/NAGS APIs
+- **Integration**: Omega EDI + Square Payments + Quo (OpenPhone) SMS + VIN/NAGS APIs
 
 ## Getting Started
 
@@ -90,7 +90,7 @@ Key variables:
 - `DATABASE_URL` - PostgreSQL connection string
 - `OMEGA_API_KEY` - Omega EDI API credentials
 - `SQUARE_ACCESS_TOKEN` - Square Payments API token
-- `TWILIO_ACCOUNT_SID` - Twilio API credentials
+- `QUO_API_KEY` - Quo (OpenPhone) SMS API credentials
 
 ## License
 

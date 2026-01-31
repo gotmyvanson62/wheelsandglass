@@ -202,13 +202,16 @@ export const quoteSubmissions = pgTable("quote_submissions", {
   location: text("location").notNull(),
   zipCode: text("zip_code").notNull(),
   serviceType: text("service_type").notNull(),
+  division: text("division").notNull().default('glass'), // 'glass' or 'wheels' - brand division
   privacyTinted: text("privacy_tinted"),
   year: text("year"),
   make: text("make"),
   model: text("model"),
   vin: text("vin"),
+  licensePlate: text("license_plate"),
   notes: text("notes"),
-  selectedWindows: jsonb("selected_windows"),
+  selectedWindows: jsonb("selected_windows"), // For glass division
+  selectedWheels: jsonb("selected_wheels"),   // For wheels division
   uploadedFiles: jsonb("uploaded_files"),
   status: text("status").notNull().default('submitted'), // 'submitted', 'processed', 'quoted'
   processedAt: timestamp("processed_at"),

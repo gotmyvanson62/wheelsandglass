@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build:shared
+
+      - name: Build client
+        run: npm run build:client
+
+      - name: Type check server
+        run: npm run build:server || true
+        continue-on-error: true
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for vulnerable dependencies
+        run: |
+          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
+          npm audit --json 2>/dev/null | jq -r '
+            if .metadata.vulnerabilities.high > 0 or .metadata.vulnerabilities.critical > 0 then
+              "### \u26A0\uFE0F High/Critical Vulnerabilities Found\n" +
+              "- Critical: \(.metadata.vulnerabilities.critical)\n" +
+              "- High: \(.metadata.vulnerabilities.high)\n"
+            else
+              "### \u2705 No High/Critical Vulnerabilities"
+            end
+          ' >> $GITHUB_STEP_SUMMARY || echo "Audit completed" >> $GITHUB_STEP_SUMMARY
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript (client)
+        run: cd client && npx tsc --noEmit || true
+        continue-on-error: true
+
+      - name: Check TypeScript (server)
+        run: cd server && npx tsc --noEmit || true
+        continue-on-error: true

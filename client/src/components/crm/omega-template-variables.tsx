@@ -50,7 +50,7 @@ export const omegaTemplateVariables = {
     { title: "Safe Drive Time", var: "{{SafeDriveAwayTime}}", desc: "When vehicle is safe to drive", example: "12:30 PM" }
   ],
   company: [
-    { title: "Company Name", var: "{{RetailerName}}", desc: "Business name", example: "Express Auto Glass" },
+    { title: "Company Name", var: "{{RetailerName}}", desc: "Business name", example: "Wheels and Glass" },
     { title: "Company Phone", var: "{{RetailerTelephone}}", desc: "Main business number", example: "(555) 123-4567" },
     { title: "Location Name", var: "{{LocationName}}", desc: "Specific location name", example: "Dallas Main" },
     { title: "Location Address", var: "{{LocationAddress}}", desc: "Location full address", example: "456 Business Dr, Dallas, TX" },
@@ -156,10 +156,10 @@ export function OmegaTemplateVariables({ onTemplateSelect }: OmegaTemplateVariab
                         <Badge variant="outline" className="text-xs">SMS</Badge>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">{template.description}</p>
-                      <div 
-                        className="text-sm text-gray-700 bg-gray-50 p-3 rounded border whitespace-pre-line"
-                        dangerouslySetInnerHTML={{ __html: template.richText.replace(/\n/g, '<br>') }}
-                      />
+                      {/* SECURITY: Use text content instead of dangerouslySetInnerHTML to prevent XSS */}
+                      <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border whitespace-pre-line">
+                        {template.richText}
+                      </div>
                     </div>
                     <Button 
                       size="sm" 

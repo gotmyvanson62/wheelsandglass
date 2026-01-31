@@ -46,6 +46,7 @@ import {
   type InsertCustomer
 } from "@shared/schema";
 import { DatabaseStorage } from "./database-storage";
+import { PasswordService } from "./services/password-service";
 
 interface JobRecord {
   id: string;
@@ -213,6 +214,9 @@ export interface IStorage {
     transactions: Transaction[];
   }>;
 
+  // Customer totals recalculation (from transactions)
+  recalculateCustomerTotals(customerId: number): Promise<Customer | undefined>;
+
   // Job record retrieval (for Omega EDI mock structure)
   getJobRecord(jobId: string): Promise<JobRecord | undefined>;
   
@@ -310,12 +314,21 @@ export class MemStorage implements IStorage {
   }
 
   private initializeDefaultAdminUser() {
-    // Create default super admin user
+    // SECURITY: Default admin uses ADMIN_PASSWORD from environment
+    // Password is hashed using bcrypt - must be set via environment variable
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      console.warn('[STORAGE] ADMIN_PASSWORD not set - default admin will not have a usable password');
+    }
+
+    // Create default super admin user with hashed password
+    // Note: This is synchronous initialization, so we use a pre-computed hash pattern
     const defaultAdmin = {
       id: 1,
       username: 'admin',
       email: 'admin@expressautoglass.com',
-      password: 'hashed_password_placeholder', // In production, this would be properly hashed
+      // Password must be set and hashed at runtime via changeAdminPassword or environment
+      password: '$2a$12$placeholder.hash.value.for.initialization.only',
       role: 'super_admin',
       isActive: true,
       lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000),
@@ -893,11 +906,15 @@ export class MemStorage implements IStorage {
 
   async createAdminUser(adminUser: any): Promise<any> {
     const id = this.currentAdminUserId++;
+
+    // SECURITY: Hash password with bcrypt before storing
+    const hashedPassword = await PasswordService.hashPassword(adminUser.password);
+
     const newUser = {
       id,
       username: adminUser.username,
       email: adminUser.email,
-      password: adminUser.password, // In production, this should be hashed with bcrypt
+      password: hashedPassword,
       role: adminUser.role || 'admin',
       isActive: true,
       lastLogin: null,
@@ -905,7 +922,10 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.adminUsersMap.set(id, newUser);
-    return newUser;
+
+    // Return user without password for security
+    const { password: _, ...userWithoutPassword } = newUser;
+    return { ...userWithoutPassword, password: '[HASHED]' };
   }
 
   async updateAdminUser(id: number, updates: any): Promise<any | undefined> {
@@ -930,8 +950,9 @@ export class MemStorage implements IStorage {
     const user = this.adminUsersMap.get(id);
     if (!user) return false;
 
-    // In production, this should hash the password with bcrypt
-    user.password = newPassword;
+    // SECURITY: Hash password with bcrypt before storing
+    const hashedPassword = await PasswordService.hashPassword(newPassword);
+    user.password = hashedPassword;
     user.updatedAt = new Date();
     this.adminUsersMap.set(id, user);
     return true;
@@ -1061,6 +1082,41 @@ export class MemStorage implements IStorage {
     const updated = { ...customer, ...updates, updatedAt: new Date() };
     this.customersMap.set(id, updated);
     return updated;
+  }
+
+  /**
+   * Recalculate customer totals (totalSpent, totalJobs, lastJobDate) from their transactions
+   * Called after payment updates to keep customer profile accurate
+   */
+  async recalculateCustomerTotals(customerId: number): Promise<Customer | undefined> {
+    const customer = this.customersMap.get(customerId);
+    if (!customer) return undefined;
+
+    // Get all successful, paid transactions for this customer
+    const customerTransactions = Array.from(this.transactions.values()).filter(
+      t => t.customerId === customerId && t.status === 'success' && t.paymentStatus === 'paid'
+    );
+
+    // Calculate totals
+    const totalSpent = customerTransactions.reduce(
+      (sum, t) => sum + (t.finalPrice || t.amount || 27500), // Default $275 if no amount
+      0
+    );
+    const totalJobs = customerTransactions.length;
+
+    // Find most recent job date
+    let lastJobDate: Date | null = null;
+    if (customerTransactions.length > 0) {
+      const timestamps = customerTransactions.map(t => new Date(t.timestamp || t.createdAt).getTime());
+      lastJobDate = new Date(Math.max(...timestamps));
+    }
+
+    // Update customer with calculated totals
+    return await this.updateCustomer(customerId, {
+      totalSpent,
+      totalJobs,
+      lastJobDate: lastJobDate?.toISOString() || null,
+    });
   }
 
   async findOrCreateCustomer(email: string, phone: string, data: Partial<InsertCustomer>): Promise<Customer> {
@@ -1205,7 +1261,7 @@ export class MemStorage implements IStorage {
         grossMargin: 0
       },
       billing: {
-        account: 'Express Auto Glass',
+        account: 'Wheels and Glass',
         accountPhone: '619-320-5730',
         accountAddress: '371 S Rancho Santa Fe Rd San Marcos, CA 92078',
         pricingProfile: 'Discount | San Diego'

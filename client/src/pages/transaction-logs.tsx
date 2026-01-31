@@ -7,22 +7,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-import { format, isValid } from "date-fns";
 import { Search, Download, RotateCcw, AlertCircle } from "lucide-react";
 import { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
 import { useLocation } from "wouter";
-
-// Safe date formatting helper
-function formatDate(dateValue: any, formatStr: string, fallback: string = '--'): string {
-  if (!dateValue) return fallback;
-  const date = new Date(dateValue);
-  if (!isValid(date)) return fallback;
-  try {
-    return format(date, formatStr);
-  } catch {
-    return fallback;
-  }
-}
+import { formatDate } from "@/lib/date-utils";
 
 // Error Boundary to catch runtime errors
 class ErrorBoundary extends Component<

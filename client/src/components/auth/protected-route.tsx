@@ -17,30 +17,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const checkAuth = async () => {
       try {
         abortController = new AbortController();
-        
-        console.log('🔍 Checking authentication...');
+
         const response = await fetch('/api/dashboard/stats', {
           credentials: 'include',
           signal: abortController.signal,
         });
 
-        console.log('🔍 Auth check response:', response.status);
-
         if (response.ok) {
-          console.log('✅ Authentication successful');
           setIsAuthenticated(true);
         } else if (response.status === 401 || response.status === 403) {
-          console.log('❌ Authentication failed, redirecting to login');
           setIsAuthenticated(false);
           setLocation('/admin/login');
         } else {
-          console.log('⚠️ Server error, redirecting to login');
           setIsAuthenticated(false);
           setLocation('/admin/login');
         }
       } catch (error: unknown) {
         if ((error as Error)?.name !== 'AbortError') {
-          console.log('💥 Auth check error:', error);
           setIsAuthenticated(false);
           setLocation('/admin/login');
         }

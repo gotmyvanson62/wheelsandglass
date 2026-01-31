@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
@@ -24,9 +25,9 @@ interface UnifiedContact {
 
 /**
  * GET /api/contacts
- * Unified contacts endpoint - aggregates customers, technicians, and distributors
+ * Unified contacts endpoint - aggregates customers, technicians, and distributors (protected)
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { type, search, status, limit = '100', offset = '0' } = req.query;
 
@@ -107,9 +108,9 @@ router.get('/', async (req: Request, res: Response) => {
 
 /**
  * GET /api/contacts/stats
- * Get contact statistics by type
+ * Get contact statistics by type (protected)
  */
-router.get('/stats', async (req: Request, res: Response) => {
+router.get('/stats', authMiddleware, async (req: Request, res: Response) => {
   try {
     let customerCount = 0;
     try {
@@ -141,6 +142,159 @@ router.get('/stats', async (req: Request, res: Response) => {
     console.error('Error fetching contact stats:', error);
     res.status(500).json({
       error: 'Failed to fetch contact statistics',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/contacts
+ * Create a new contact (customer, technician, or distributor) (protected)
+ */
+router.post('/', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { type, name, email, phone, company, city, state, specialty } = req.body;
+
+    // Validate required fields
+    if (!type || !name) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Type and name are required'
+      });
+    }
+
+    // Validate type
+    if (!['customer', 'technician', 'distributor'].includes(type)) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Type must be customer, technician, or distributor'
+      });
+    }
+
+    let createdContact: UnifiedContact | null = null;
+
+    if (type === 'customer') {
+      // Parse name into first/last
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || name;
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const customer = await storage.createCustomer({
+        firstName,
+        lastName,
+        primaryEmail: email || '',
+        primaryPhone: phone || '',
+        company: company || null,
+        status: 'active',
+        accountType: 'individual',
+        vehicleYear: null,
+        vehicleMake: null,
+        vehicleModel: null,
+        vin: null,
+        totalJobs: 0,
+        totalSpent: 0,
+        address: null,
+        notes: null
+      });
+
+      createdContact = {
+        id: customer.id,
+        type: 'customer',
+        name: `${customer.firstName} ${customer.lastName}`,
+        email: customer.primaryEmail,
+        phone: customer.primaryPhone,
+        company: customer.company || undefined,
+        status: 'active'
+      };
+    } else if (type === 'technician') {
+      // For technicians, we'll create a subcontractor record
+      const subcontractor = await storage.createSubcontractor({
+        companyName: company || name,
+        contactName: name,
+        email: email || '',
+        phone: phone || '',
+        address: city && state ? `${city}, ${state}` : null,
+        city: city || null,
+        state: state || null,
+        zipCode: null,
+        serviceRadius: 50,
+        hourlyRate: null,
+        certifications: specialty ? [specialty] : [],
+        insuranceExpiry: null,
+        agreementSigned: false,
+        status: 'pending',
+        notes: null,
+        rating: null,
+        completedJobs: 0,
+        lastActive: null
+      });
+
+      createdContact = {
+        id: subcontractor.id,
+        type: 'technician',
+        name: subcontractor.contactName,
+        email: subcontractor.email,
+        phone: subcontractor.phone,
+        company: subcontractor.companyName,
+        city: subcontractor.city || undefined,
+        state: subcontractor.state || undefined,
+        specialty: specialty || undefined,
+        status: 'pending'
+      };
+    } else if (type === 'distributor') {
+      // For distributors, create as a customer with distributor account type
+      const distributor = await storage.createCustomer({
+        firstName: name,
+        lastName: '(Distributor)',
+        primaryEmail: email || '',
+        primaryPhone: phone || '',
+        company: company || name,
+        status: 'active',
+        accountType: 'distributor',
+        vehicleYear: null,
+        vehicleMake: null,
+        vehicleModel: null,
+        vin: null,
+        totalJobs: 0,
+        totalSpent: 0,
+        address: null,
+        notes: 'Distributor contact'
+      });
+
+      createdContact = {
+        id: distributor.id,
+        type: 'distributor',
+        name: distributor.company || name,
+        email: distributor.primaryEmail,
+        phone: distributor.primaryPhone,
+        company: distributor.company || undefined,
+        status: 'active'
+      };
+    }
+
+    if (!createdContact) {
+      return res.status(500).json({
+        error: 'Failed to create contact',
+        message: 'Contact creation returned null'
+      });
+    }
+
+    // Log the activity
+    await storage.createActivityLog({
+      type: 'contact_created',
+      message: `New ${type} created: ${name}`,
+      details: { contactType: type, contactId: createdContact.id, name }
+    });
+
+    res.status(201).json({
+      success: true,
+      contact: createdContact
+    });
+
+  } catch (error) {
+    console.error('Error creating contact:', error);
+    res.status(500).json({
+      error: 'Failed to create contact',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

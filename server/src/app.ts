@@ -21,9 +21,13 @@ export function createApp(): Express {
   // Security middleware
   app.use(helmet());
 
-  // CORS configuration
+  // CORS configuration - SECURITY: Require explicit origin in production
+  const corsOrigin = process.env.CLIENT_URL;
+  if (!corsOrigin && process.env.NODE_ENV === 'production') {
+    logger.warn('[SECURITY] CLIENT_URL not configured - CORS will reject cross-origin requests');
+  }
   app.use(cors({
-    origin: process.env.CLIENT_URL || '*',
+    origin: corsOrigin || (process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173'),
     credentials: true,
   }));
 

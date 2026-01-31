@@ -34,7 +34,8 @@ import {
   ClipboardList,
   Car,
   Eye,
-  Mail
+  Mail,
+  Plus
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -106,32 +107,54 @@ export default function CRM() {
   const [jobsStatusFilter, setJobsStatusFilter] = useState<string | undefined>(undefined);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [customerProfileOpen, setCustomerProfileOpen] = useState(false);
+  const [addContactOpen, setAddContactOpen] = useState(false);
 
-  // Sample pipeline data for drill-down
+  // Pipeline data - populated from API when available
   const pipelineData = {
-    'quotes-to-work-orders': [
-      { id: 'Q-2021', customer: 'Sarah Johnson', vehicle: '2019 Honda Civic', service: 'Windshield Replacement', amount: '$385.75', date: '2024-01-20', status: 'Quote Sent' },
-      { id: 'Q-2022', customer: 'Michael Brown', vehicle: '2020 Ford F-150', service: 'Side Window Repair', amount: '$225.50', date: '2024-01-21', status: 'Pending Approval' },
-      { id: 'Q-2023', customer: 'Lisa Wilson', vehicle: '2018 Toyota Camry', service: 'Rear Window Replacement', amount: '$320.00', date: '2024-01-22', status: 'Customer Review' },
-      { id: 'Q-2024', customer: 'David Martinez', vehicle: '2021 BMW X5', service: 'Windshield Replacement', amount: '$495.25', date: '2024-01-23', status: 'Quote Sent' },
-    ],
-    'work-orders-to-invoice': [
-      { id: 'WO-2005', customer: 'Robert Wilson', vehicle: '2018 Ford F-150', service: 'Rear Window Replacement', amount: '$385.75', date: '2024-01-19', status: 'Work Complete' },
-      { id: 'WO-2006', customer: 'Emma Davis', vehicle: '2020 Honda Accord', service: 'Windshield Replacement', amount: '$365.00', date: '2024-01-20', status: 'Ready to Invoice' },
-      { id: 'WO-2007', customer: 'James Garcia', vehicle: '2019 Chevrolet Tahoe', service: 'Side Window Repair', amount: '$275.50', date: '2024-01-21', status: 'Work Complete' },
-    ],
-    'invoice-to-payment': [
-      { id: 'INV-1015', customer: 'John Smith', vehicle: '2017 Toyota Prius', service: 'Windshield Replacement', amount: '$345.00', date: '2024-01-18', status: 'Payment Pending' },
-      { id: 'INV-1016', customer: 'Maria Rodriguez', vehicle: '2019 Nissan Altima', service: 'Rear Window Replacement', amount: '$295.75', date: '2024-01-19', status: 'Sent to Customer' },
-      { id: 'INV-1017', customer: 'Kevin Lee', vehicle: '2020 Subaru Outback', service: 'Side Window Repair', amount: '$185.25', date: '2024-01-20', status: 'Payment Pending' },
-      { id: 'INV-1018', customer: 'Ashley Turner', vehicle: '2018 Mercedes C-Class', service: 'Windshield Replacement', amount: '$425.50', date: '2024-01-21', status: 'Overdue' },
-    ]
+    'quotes-to-work-orders': [] as { id: string; customer: string; vehicle: string; service: string; amount: string; date: string; status: string; }[],
+    'work-orders-to-invoice': [] as { id: string; customer: string; vehicle: string; service: string; amount: string; date: string; status: string; }[],
+    'invoice-to-payment': [] as { id: string; customer: string; vehicle: string; service: string; amount: string; date: string; status: string; }[]
   };
 
   // Fetch dashboard data for conversion stats
   const { data: dashboardData } = useQuery({
     queryKey: ['/api/dashboard/stats'],
   });
+
+  // Fetch appointments for the current week
+  const getWeekDates = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    return { start: startOfWeek.toISOString(), end: endOfWeek.toISOString() };
+  };
+  const weekDates = getWeekDates();
+
+  const { data: appointmentsData } = useQuery({
+    queryKey: ['/api/appointments', weekDates.start, weekDates.end],
+    queryFn: async () => {
+      const response = await fetch(`/api/appointments?start=${weekDates.start}&end=${weekDates.end}`);
+      if (!response.ok) throw new Error('Failed to fetch appointments');
+      return response.json();
+    },
+  });
+
+  const appointments = (appointmentsData as any)?.data || [];
+
+  // Group appointments by day of week
+  const appointmentsByDay = appointments.reduce((acc: Record<string, any[]>, apt: any) => {
+    const date = new Date(apt.scheduledDate || apt.requestedDate);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[date.getDay()];
+    if (!acc[dayName]) acc[dayName] = [];
+    acc[dayName].push(apt);
+    return acc;
+  }, {});
 
   const conversionStats = (dashboardData as any)?.stats || {
     formSubmissions: 0,
@@ -169,133 +192,18 @@ export default function CRM() {
     setCustomerProfileOpen(true);
   };
 
-  // Mock data for demonstration
+  // Stats - populated from API when available
   const stats: ContactStats = {
-    totalContacts: 156,
-    activeConversations: 23,
-    pendingResponses: 8,
-    completedJobs: 342,
-    averageResponseTime: 12, // minutes
-    conversionRate: 78
+    totalContacts: 0,
+    activeConversations: 0,
+    pendingResponses: 0,
+    completedJobs: 0,
+    averageResponseTime: 0,
+    conversionRate: 0
   };
 
-  const recentContacts: Contact[] = [
-    // Technicians
-    {
-      id: '1',
-      name: 'Mike Johnson',
-      phone: '+1 (555) 123-4567',
-      email: 'mike@mikesautoglass.com',
-      company: 'Mike\'s Auto Glass',
-      status: 'active',
-      lastContact: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      totalJobs: 28,
-      tags: ['Preferred Contractor', 'Fast Response'],
-      category: 'technician',
-      specialties: ['Windshield', 'Side Windows'],
-      serviceAreas: ['Downtown', 'Central District']
-    },
-    {
-      id: '2',
-      name: 'David Wilson',
-      phone: '+1 (555) 987-6543',
-      email: 'david@glasspro.com',
-      company: 'Glass Pro Services',
-      status: 'pending',
-      lastContact: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      totalJobs: 15,
-      tags: ['New Contractor'],
-      category: 'technician',
-      specialties: ['All Glass Types'],
-      serviceAreas: ['Westside', 'North District']
-    },
-    {
-      id: '3',
-      name: 'Alex Turner',
-      phone: '+1 (555) 456-7890',
-      email: 'alex@rapidwindshield.com',
-      company: 'Rapid Windshield Repair',
-      status: 'active',
-      lastContact: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      totalJobs: 45,
-      tags: ['High Volume', 'Reliable'],
-      category: 'technician',
-      specialties: ['Windshield', 'Mobile Service'],
-      serviceAreas: ['Mobile Service', 'All Areas']
-    },
-    // Customers
-    {
-      id: '4',
-      name: 'John Smith',
-      phone: '+1 (555) 234-5678',
-      email: 'john.smith@email.com',
-      status: 'active',
-      lastContact: new Date(Date.now() - 30 * 60 * 1000),
-      totalJobs: 1,
-      tags: ['Recent Customer'],
-      category: 'customer'
-    },
-    {
-      id: '5',
-      name: 'Lisa Chen',
-      phone: '+1 (555) 345-6789',
-      email: 'lisa.chen@email.com',
-      status: 'active',
-      lastContact: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      totalJobs: 1,
-      tags: ['Current Service'],
-      category: 'customer'
-    },
-    {
-      id: '6',
-      name: 'Robert Wilson',
-      phone: '+1 (555) 456-7891',
-      email: 'robert.wilson@fleet.com',
-      company: 'Fleet Operations Inc',
-      status: 'active',
-      lastContact: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      totalJobs: 12,
-      tags: ['Fleet Customer', 'Regular'],
-      category: 'customer'
-    },
-    // Distributors
-    {
-      id: '7',
-      name: 'Mygrant Glass',
-      phone: '+1 (555) 111-2222',
-      email: 'orders@mygrant.com',
-      company: 'Mygrant Glass Distribution',
-      status: 'active',
-      lastContact: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      totalJobs: 0,
-      tags: ['Primary Supplier', 'Fast Delivery'],
-      category: 'distributor'
-    },
-    {
-      id: '8',
-      name: 'Pilkington Sales',
-      phone: '+1 (555) 222-3333',
-      email: 'sales@pilkington.com',
-      company: 'Pilkington Glass',
-      status: 'active',
-      lastContact: new Date(Date.now() - 48 * 60 * 60 * 1000),
-      totalJobs: 0,
-      tags: ['OEM Quality', 'Premium Parts'],
-      category: 'distributor'
-    },
-    {
-      id: '9',
-      name: 'PGW Industries',
-      phone: '+1 (555) 333-4444',
-      email: 'support@pgw.com',
-      company: 'PGW Industries',
-      status: 'pending',
-      lastContact: new Date(Date.now() - 72 * 60 * 60 * 1000),
-      totalJobs: 0,
-      tags: ['Backup Supplier'],
-      category: 'distributor'
-    }
-  ];
+  // Contacts - populated from API
+  const recentContacts: Contact[] = [];
 
   const getStatusColor = (status: Contact['status']) => {
     switch (status) {
@@ -322,6 +230,59 @@ export default function CRM() {
   return (
     <div className="space-y-4 lg:space-y-6 max-w-full overflow-x-hidden">
 
+      {/* Header with Add Contact Button */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">CRM & Communication</h1>
+        <Dialog open={addContactOpen} onOpenChange={setAddContactOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Contact</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add New Contact</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
+                  <input type="text" placeholder="John" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
+                  <input type="text" placeholder="Doe" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Type</label>
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                  <option value="customer">Customer</option>
+                  <option value="technician">Technician</option>
+                  <option value="distributor">Distributor</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                <input type="email" placeholder="john.doe@example.com" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                <input type="tel" placeholder="(555) 123-4567" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company (Optional)</label>
+                <input type="text" placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setAddContactOpen(false)}>Cancel</Button>
+                <Button onClick={() => setAddContactOpen(false)}>Add Contact</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {/* CRM Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -448,39 +409,21 @@ export default function CRM() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Card>
                           <CardHeader>
-                            <CardTitle className="text-lg">Active Now (5:30 PM)</CardTitle>
+                            <CardTitle className="text-lg">Active Now ({new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })})</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <span>Mike Johnson</span>
-                                <Badge className="bg-green-100 text-green-800">On-site</Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>David Wilson</span>
-                                <Badge className="bg-blue-100 text-blue-800">En route</Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Carlos Rodriguez</span>
-                                <Badge className="bg-yellow-100 text-yellow-800">Preparing</Badge>
-                              </div>
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                              <p className="text-sm">No active technicians</p>
                             </div>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardHeader>
-                            <CardTitle className="text-lg">Next Hour (6:00 PM)</CardTitle>
+                            <CardTitle className="text-lg">Next Hour</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <span>Lisa Chen - Windshield</span>
-                                <Badge className="bg-blue-100 text-blue-800">Priority</Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>End of day cleanup</span>
-                                <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">Scheduled</Badge>
-                              </div>
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                              <p className="text-sm">No upcoming appointments</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -514,24 +457,8 @@ export default function CRM() {
                             <CardTitle className="text-lg">Open Invoices</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <span>WO-2001 - John Smith</span>
-                                <span className="font-semibold">$485.75</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>WO-2003 - Mike Johnson</span>
-                                <span className="font-semibold">$892.50</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>WO-2005 - Robert Wilson</span>
-                                <span className="font-semibold">$325.00</span>
-                              </div>
-                              <hr />
-                              <div className="flex justify-between font-bold">
-                                <span>Total Outstanding</span>
-                                <span>$1,703.25</span>
-                              </div>
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                              <p className="text-sm">No open invoices</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -540,15 +467,8 @@ export default function CRM() {
                             <CardTitle className="text-lg">Rescheduled Appointments</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="space-y-1">
-                                <div className="font-medium">Sarah Davis - Side Window</div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">Moved from Wed 2:00 PM to Fri 10:00 AM</div>
-                              </div>
-                              <div className="space-y-1">
-                                <div className="font-medium">Lisa Chen - Windshield</div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">Scheduled - Added to Friday 8:00 AM</div>
-                              </div>
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                              <p className="text-sm">No rescheduled appointments</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -582,28 +502,9 @@ export default function CRM() {
                             <CardTitle className="text-lg">Primary Distributors</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium">Mygrant Glass</div>
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">(555) 123-4567</div>
-                                </div>
-                                <Badge className="bg-green-100 text-green-800">Active</Badge>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium">Pilkington</div>
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">(555) 987-6543</div>
-                                </div>
-                                <Badge className="bg-green-100 text-green-800">Active</Badge>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium">PGW Industries</div>
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">(555) 456-7890</div>
-                                </div>
-                                <Badge className="bg-yellow-100 text-yellow-800">Limited</Badge>
-                              </div>
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                              <p className="text-sm">No distributors configured</p>
+                              <p className="text-xs mt-1">Add distributors in the Contacts tab</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -612,21 +513,9 @@ export default function CRM() {
                             <CardTitle className="text-lg">Dealer Networks</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium">BMW Dealer Parts</div>
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">(555) 321-0987</div>
-                                </div>
-                                <Badge className="bg-blue-100 text-blue-800">OEM</Badge>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium">Toyota Parts Direct</div>
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">(555) 654-3210</div>
-                                </div>
-                                <Badge className="bg-blue-100 text-blue-800">OEM</Badge>
-                              </div>
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                              <p className="text-sm">No dealer networks configured</p>
+                              <p className="text-xs mt-1">Add dealers in the Contacts tab</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -652,12 +541,12 @@ export default function CRM() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Quotes → Work Orders</span>
-                    <span className="text-lg font-bold text-blue-600">67%</span>
+                    <span className="text-lg font-bold text-gray-400">0%</span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
-                    <div className="bg-blue-600 h-3 rounded-full transition-all" style={{width: '67%'}}></div>
+                    <div className="bg-blue-600 h-3 rounded-full transition-all" style={{width: '0%'}}></div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">4 pending quotes</div>
+                  <div className="text-xs text-gray-500 mt-2">No pending quotes</div>
                 </div>
 
                 {/* Work Orders to Invoice */}
@@ -667,12 +556,12 @@ export default function CRM() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Work Orders → Invoice</span>
-                    <span className="text-lg font-bold text-green-600">85%</span>
+                    <span className="text-lg font-bold text-gray-400">0%</span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
-                    <div className="bg-green-600 h-3 rounded-full transition-all" style={{width: '85%'}}></div>
+                    <div className="bg-green-600 h-3 rounded-full transition-all" style={{width: '0%'}}></div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">3 ready to invoice</div>
+                  <div className="text-xs text-gray-500 mt-2">No work orders ready</div>
                 </div>
 
                 {/* Invoice to Payment */}
@@ -682,12 +571,12 @@ export default function CRM() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Invoice → Payment</span>
-                    <span className="text-lg font-bold text-purple-600">92%</span>
+                    <span className="text-lg font-bold text-gray-400">0%</span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
-                    <div className="bg-purple-600 h-3 rounded-full transition-all" style={{width: '92%'}}></div>
+                    <div className="bg-purple-600 h-3 rounded-full transition-all" style={{width: '0%'}}></div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">4 awaiting payment</div>
+                  <div className="text-xs text-gray-500 mt-2">No invoices pending</div>
                 </div>
               </div>
 
@@ -761,55 +650,73 @@ export default function CRM() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Monday */}
-                <div className="border rounded-lg p-4">
-                  <div className="font-medium text-lg mb-3 text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 pb-2">Monday</div>
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    No appointments scheduled
-                  </div>
-                </div>
-
-                {/* Tuesday */}
-                <div className="border rounded-lg p-4">
-                  <div className="font-medium text-lg mb-3 text-gray-900 border-b dark:border-gray-700 pb-2">Tuesday, Dec 24</div>
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    No appointments scheduled
-                  </div>
-                </div>
-
-                {/* Wednesday */}
-                <div className="border rounded-lg p-4">
-                  <div className="font-medium text-lg mb-3 text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 pb-2">Wednesday</div>
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    No appointments scheduled
-                  </div>
-                </div>
-
-                {/* Thursday */}
-                <div className="border rounded-lg p-4">
-                  <div className="font-medium text-lg mb-3 text-gray-900 border-b dark:border-gray-700 pb-2">Thursday, Dec 26</div>
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    No appointments scheduled
-                  </div>
-                </div>
-
-                {/* Friday */}
-                <div className="border rounded-lg p-4">
-                  <div className="font-medium text-lg mb-3 text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 pb-2">Friday</div>
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    No appointments scheduled
-                  </div>
-                </div>
+                {/* Weekdays - Dynamic from API */}
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((dayName) => {
+                  const dayAppointments = appointmentsByDay[dayName] || [];
+                  return (
+                    <div key={dayName} className="border rounded-lg p-4">
+                      <div className="font-medium text-lg mb-3 text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 pb-2">
+                        {dayName}
+                        {dayAppointments.length > 0 && (
+                          <Badge className="ml-2 bg-blue-100 text-blue-800">{dayAppointments.length}</Badge>
+                        )}
+                      </div>
+                      {dayAppointments.length === 0 ? (
+                        <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                          No appointments scheduled
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {dayAppointments.map((apt: any) => (
+                            <div key={apt.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 grid grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <div className="text-xs text-gray-500 uppercase">What</div>
+                                <div className="font-medium">{apt.serviceType || 'Service'}</div>
+                                <div className="text-gray-600 dark:text-gray-400">{apt.customerName}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 uppercase">Where</div>
+                                <div className="font-medium flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {apt.serviceAddress?.split(',')[0] || 'TBD'}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 uppercase">Who</div>
+                                <div className="font-medium">{apt.technicianId ? `Tech #${apt.technicianId}` : 'Unassigned'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 uppercase">When</div>
+                                <div className="font-medium">{apt.requestedTime || 'TBD'}</div>
+                                <Badge className={apt.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                                  {apt.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Weekend Summary */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border rounded-lg p-4">
-                    <div className="font-medium text-lg mb-2 text-gray-900 dark:text-gray-100">Saturday, Dec 28</div>
-                    <div className="text-center text-gray-500 dark:text-gray-400 py-4">Weekend - No service</div>
+                    <div className="font-medium text-lg mb-2 text-gray-900 dark:text-gray-100">Saturday</div>
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                      {(appointmentsByDay['Saturday'] || []).length > 0
+                        ? `${appointmentsByDay['Saturday'].length} appointment(s)`
+                        : 'Weekend - No service'}
+                    </div>
                   </div>
                   <div className="border rounded-lg p-4">
-                    <div className="font-medium text-lg mb-2 text-gray-900 dark:text-gray-100">Sunday, Dec 29</div>
-                    <div className="text-center text-gray-500 dark:text-gray-400 py-4">Weekend - No service</div>
+                    <div className="font-medium text-lg mb-2 text-gray-900 dark:text-gray-100">Sunday</div>
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                      {(appointmentsByDay['Sunday'] || []).length > 0
+                        ? `${appointmentsByDay['Sunday'].length} appointment(s)`
+                        : 'Weekend - No service'}
+                    </div>
                   </div>
                 </div>
               </div>

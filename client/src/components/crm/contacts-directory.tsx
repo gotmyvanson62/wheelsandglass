@@ -3,6 +3,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import {
   Search,
   Phone,
@@ -15,7 +32,8 @@ import {
   Star,
   FileText,
   ShoppingCart,
-  Loader2
+  Loader2,
+  Plus
 } from 'lucide-react';
 
 interface UnifiedContact {
@@ -41,6 +59,7 @@ interface ContactsDirectoryProps {
 }
 
 export function ContactsDirectory({ onMessageContact, onViewContact }: ContactsDirectoryProps) {
+  const { toast } = useToast();
   const [contacts, setContacts] = useState<UnifiedContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +71,71 @@ export function ContactsDirectory({ onMessageContact, onViewContact }: ContactsD
 
   // Debounced search
   const [searchInput, setSearchInput] = useState('');
+
+  // Add Contact Dialog State
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addingContact, setAddingContact] = useState(false);
+  const [newContact, setNewContact] = useState({
+    type: 'technician' as 'customer' | 'technician' | 'distributor',
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    city: '',
+    state: '',
+    specialty: ''
+  });
+
+  const handleAddContact = async () => {
+    if (!newContact.name || !newContact.type) {
+      toast({
+        title: "Error",
+        description: "Name and type are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setAddingContact(true);
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newContact)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create contact');
+      }
+
+      toast({
+        title: "Success",
+        description: `${newContact.type.charAt(0).toUpperCase() + newContact.type.slice(1)} added successfully`
+      });
+
+      setShowAddDialog(false);
+      setNewContact({
+        type: 'technician',
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        city: '',
+        state: '',
+        specialty: ''
+      });
+      // Refresh contacts
+      fetchContacts();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to add contact. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setAddingContact(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -106,26 +190,26 @@ export function ContactsDirectory({ onMessageContact, onViewContact }: ContactsD
   const getTypeBadgeColor = (type: string) => {
     switch (type) {
       case 'customer':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:border-blue-700';
       case 'technician':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-700';
       case 'distributor':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
+        return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/50 dark:text-purple-200 dark:border-purple-700';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600';
     }
   };
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200 dark:border-emerald-700';
       case 'pending':
-        return 'bg-amber-100 text-amber-800 border-amber-200';
+        return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-700';
       case 'inactive':
-        return 'bg-gray-100 text-gray-600 border-gray-200';
+        return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600';
     }
   };
 
@@ -243,6 +327,144 @@ export function ContactsDirectory({ onMessageContact, onViewContact }: ContactsD
 
   return (
     <div className="space-y-4">
+      {/* Header with Add Button */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Contacts Directory</h2>
+        <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Add Contact
+        </Button>
+      </div>
+
+      {/* Add Contact Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Contact</DialogTitle>
+            <DialogDescription>
+              Add a new technician, customer, or distributor to your contacts.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="contact-type">Contact Type *</Label>
+              <Select
+                value={newContact.type}
+                onValueChange={(value: 'customer' | 'technician' | 'distributor') =>
+                  setNewContact(c => ({ ...c, type: value }))
+                }
+              >
+                <SelectTrigger id="contact-type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="technician">Technician</SelectItem>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="distributor">Distributor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="contact-name">Name *</Label>
+              <Input
+                id="contact-name"
+                value={newContact.name}
+                onChange={(e) => setNewContact(c => ({ ...c, name: e.target.value }))}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="contact-email">Email</Label>
+                <Input
+                  id="contact-email"
+                  type="email"
+                  value={newContact.email}
+                  onChange={(e) => setNewContact(c => ({ ...c, email: e.target.value }))}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="contact-phone">Phone</Label>
+                <Input
+                  id="contact-phone"
+                  type="tel"
+                  value={newContact.phone}
+                  onChange={(e) => setNewContact(c => ({ ...c, phone: e.target.value }))}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="contact-company">Company</Label>
+              <Input
+                id="contact-company"
+                value={newContact.company}
+                onChange={(e) => setNewContact(c => ({ ...c, company: e.target.value }))}
+                placeholder="Company name"
+              />
+            </div>
+            {newContact.type === 'technician' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="contact-city">City</Label>
+                    <Input
+                      id="contact-city"
+                      value={newContact.city}
+                      onChange={(e) => setNewContact(c => ({ ...c, city: e.target.value }))}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="contact-state">State</Label>
+                    <Input
+                      id="contact-state"
+                      value={newContact.state}
+                      onChange={(e) => setNewContact(c => ({ ...c, state: e.target.value }))}
+                      placeholder="State"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-specialty">Specialty</Label>
+                  <Select
+                    value={newContact.specialty}
+                    onValueChange={(value) => setNewContact(c => ({ ...c, specialty: value }))}
+                  >
+                    <SelectTrigger id="contact-specialty">
+                      <SelectValue placeholder="Select specialty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Glass Replacement">Glass Replacement</SelectItem>
+                      <SelectItem value="Chip/Crack Repair">Chip/Crack Repair</SelectItem>
+                      <SelectItem value="ADAS Calibration">ADAS Calibration</SelectItem>
+                      <SelectItem value="Window Tinting">Window Tinting</SelectItem>
+                      <SelectItem value="All Services">All Services</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddContact} disabled={addingContact}>
+              {addingContact ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Contact'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -257,7 +479,7 @@ export function ContactsDirectory({ onMessageContact, onViewContact }: ContactsD
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2">
         {/* Type Filters */}
-        <div className="flex gap-1 border rounded-lg p-1 bg-gray-50">
+        <div className="flex gap-1 border rounded-lg p-1 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
           {[
             { value: 'all', label: 'All Types' },
             { value: 'customer', label: 'Customers' },
@@ -283,7 +505,7 @@ export function ContactsDirectory({ onMessageContact, onViewContact }: ContactsD
 
         {/* Status Filters - Only show when Technicians is selected */}
         {filters.type === 'technician' && (
-          <div className="flex gap-1 border rounded-lg p-1 bg-gray-50">
+          <div className="flex gap-1 border rounded-lg p-1 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
             {[
               { value: 'all', label: 'All Status' },
               { value: 'active', label: 'Active' },

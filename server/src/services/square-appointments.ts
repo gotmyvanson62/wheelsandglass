@@ -32,9 +32,15 @@ export class SquareBookingsService {
   private locationId: string;
 
   constructor() {
-    this.accessToken = process.env.SQUARE_ACCESS_TOKEN || 'sandbox-token';
-    this.baseUrl = process.env.SQUARE_API_BASE_URL || 'https://connect.squareupsandbox.com/v2';
-    this.locationId = process.env.SQUARE_LOCATION_ID || 'E7GCF80WM2V05';
+    this.accessToken = process.env.SQUARE_ACCESS_TOKEN || '';
+    this.baseUrl = process.env.SQUARE_ENVIRONMENT === 'sandbox'
+      ? 'https://connect.squareupsandbox.com/v2'
+      : 'https://connect.squareup.com/v2';
+    this.locationId = process.env.SQUARE_LOCATION_ID || '';
+
+    if (!this.accessToken) {
+      console.warn('[SquareAppointments] SQUARE_ACCESS_TOKEN not configured');
+    }
   }
 
   /**

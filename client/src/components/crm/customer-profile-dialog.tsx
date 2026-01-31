@@ -20,23 +20,12 @@ import {
   XCircle,
   Loader2
 } from 'lucide-react';
-import { format, isValid } from 'date-fns';
+import { formatDate } from '@/lib/date-utils';
 
 interface CustomerProfileDialogProps {
   customerId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-function formatDate(dateValue: any, formatStr: string, fallback: string = '--'): string {
-  if (!dateValue) return fallback;
-  const date = new Date(dateValue);
-  if (!isValid(date)) return fallback;
-  try {
-    return format(date, formatStr);
-  } catch {
-    return fallback;
-  }
 }
 
 function formatCurrency(cents: number | null | undefined): string {

@@ -28,11 +28,18 @@ export class SquarePaymentService {
   private locationId: string;
 
   constructor() {
-    this.accessToken = process.env.SQUARE_ACCESS_TOKEN || 'EAAAEASHtAfuFZ07V23Wse8pEvx2JO0BEZIrnvC_dJsCdjeTGREr-plGYpBqKu6V';
-    this.baseUrl = process.env.SQUARE_ENVIRONMENT === 'sandbox' 
+    this.accessToken = process.env.SQUARE_ACCESS_TOKEN || '';
+    this.baseUrl = process.env.SQUARE_ENVIRONMENT === 'sandbox'
       ? 'https://connect.squareupsandbox.com'
       : 'https://connect.squareup.com';
-    this.locationId = process.env.SQUARE_LOCATION_ID || 'E7GCF80WM2V05';
+    this.locationId = process.env.SQUARE_LOCATION_ID || '';
+
+    if (!this.accessToken) {
+      console.warn('[SquarePaymentService] SQUARE_ACCESS_TOKEN not configured');
+    }
+    if (!this.locationId) {
+      console.warn('[SquarePaymentService] SQUARE_LOCATION_ID not configured');
+    }
   }
 
   /**

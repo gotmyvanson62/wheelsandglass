@@ -27,12 +27,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
 
   // Setup WebSocket server for real-time notifications
-  const wss = new WebSocketServer({ 
-    server, 
+  const wss = new WebSocketServer({
+    server,
     path: '/ws/notifications',
     verifyClient: (info: any) => {
-      // Basic verification - in production you'd want to verify authentication
-      return true;
+      // SECURITY: Verify authentication token for WebSocket connections
+      try {
+        const url = new URL(info.req.url!, `http://${info.req.headers.host}`);
+        const token = url.searchParams.get('token');
+
+        // In development without JWT_SECRET, allow connections but log warning
+        if (!process.env.JWT_SECRET) {
+          console.warn('[WebSocket] JWT_SECRET not configured - allowing unauthenticated connection');
+          return true;
+        }
+
+        // Require token in production
+        if (!token) {
+          console.warn('[WebSocket] Connection rejected: No authentication token provided');
+          return false;
+        }
+
+        // Verify JWT token
+        const jwt = require('jsonwebtoken');
+        try {
+          jwt.verify(token, process.env.JWT_SECRET);
+          return true;
+        } catch (err) {
+          console.warn('[WebSocket] Connection rejected: Invalid token');
+          return false;
+        }
+      } catch (err) {
+        console.error('[WebSocket] Error verifying client:', err);
+        return false;
+      }
     }
   });
 
@@ -67,13 +95,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/webhooks', webhookRateLimit);
 
   // Global error handler
+  // SECURITY: Sanitize error details in production to prevent information leakage
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     const correlationId = req.headers['x-correlation-id'] as string || 'unknown';
-    console.error(`[${correlationId}] Error:`, err);
-    res.status(500).json({ 
-      success: false, 
+
+    // In production, only log error message and type, not full stack trace
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`[${correlationId}] Error: ${err.name}: ${err.message}`);
+    } else {
+      // In development, log full error for debugging
+      console.error(`[${correlationId}] Error:`, err);
+    }
+
+    res.status(500).json({
+      success: false,
       message: 'Internal server error',
-      correlationId 
+      correlationId
     });
   });
 
@@ -145,16 +182,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple password authentication for admin access
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'wheelsandglass2025';
-  
+  // SECURITY: No default password - must be configured via environment variable
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
   app.post("/api/admin/login", (req: any, res) => {
     try {
+      // Check if admin password is configured
+      if (!ADMIN_PASSWORD) {
+        console.error('[SECURITY] ADMIN_PASSWORD environment variable not configured');
+        return res.status(500).json({
+          success: false,
+          message: "Server configuration error. Contact administrator."
+        });
+      }
+
       const { password } = req.body;
-      
+
       if (!password) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Password required" 
+        return res.status(400).json({
+          success: false,
+          message: "Password required"
         });
       }
 
@@ -226,31 +273,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin logout route
   app.post("/api/admin/logout", (req: any, res) => {
     try {
+      // SECURITY: Clear the httpOnly auth cookie
+      res.clearCookie('admin_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/',
+      });
+
       if (req.session) {
         req.session.destroy((err: any) => {
           if (err) {
             console.error('[Admin Logout] Error:', err);
-            return res.status(500).json({ 
-              success: false, 
-              message: "Logout error" 
+            return res.status(500).json({
+              success: false,
+              message: "Logout error"
             });
           }
-          res.json({ 
-            success: true, 
-            message: "Logout successful" 
+          res.json({
+            success: true,
+            message: "Logout successful"
           });
         });
       } else {
-        res.json({ 
-          success: true, 
-          message: "Already logged out" 
+        res.json({
+          success: true,
+          message: "Already logged out"
         });
       }
     } catch (error) {
       console.error('[Admin Logout] Error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Logout error" 
+      res.status(500).json({
+        success: false,
+        message: "Logout error"
       });
     }
   });
@@ -261,7 +316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job record API route for fetching individual job details
-  app.get("/api/job/:id", async (req, res) => {
+  // SECURITY: Requires authentication to prevent unauthorized access
+  app.get("/api/job/:id", isAuthenticated, async (req, res) => {
     try {
       const jobId = req.params.id;
       const job = await storage.getJobRecord(jobId);
@@ -722,10 +778,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimatedDuration: 120,
         vehicleInfo,
         message: `Square booking URL generated with $${totalPrice} pricing`,
-        credentials: {
-          squareApplicationId: 'sq0idp-dwithtjE1eL606Y7sp2x7w',
-          squareAccessToken: 'EAAAEASHtAfuFZ07V23Wse8pEvx2JO0BEZIrnvC_dJsCdjeTGREr-plGYpBqKu6V',
-          omegaApiKey: 'C55KeMr7T7JaHtKS'
+        integrations: {
+          squareConfigured: !!process.env.SQUARE_ACCESS_TOKEN,
+          omegaConfigured: !!process.env.OMEGA_API_KEY
         }
       });
     } catch (error) {

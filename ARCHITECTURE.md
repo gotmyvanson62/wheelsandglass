@@ -1,8 +1,8 @@
-# Express Auto Glass - System Architecture Documentation
+# Wheels and Glass - System Architecture Documentation
 
 ## Overview
 
-Express Auto Glass is an auto glass service management system that provides:
+Wheels and Glass is an auto glass service management system that provides:
 - **CPQ (Configure Price Quote)**: Customer quote requests → pricing → scheduling
 - **CRM**: Contact and job management for the admin team
 - **Appointments**: Service scheduling with technician coordination
@@ -356,10 +356,10 @@ SQUARE_ACCESS_TOKEN=your_token
 SQUARE_LOCATION_ID=your_location
 SQUARE_ENVIRONMENT=sandbox|production
 
-# Twilio SMS
-TWILIO_ACCOUNT_SID=your_sid
-TWILIO_AUTH_TOKEN=your_token
-TWILIO_PHONE_NUMBER=+1...
+# Quo (OpenPhone) SMS - Replaces Twilio
+QUO_API_KEY=your_key
+QUO_PHONE_NUMBER_ID=your_phone_id
+QUO_WEBHOOK_SECRET=your_secret
 
 # App
 NODE_ENV=development|production
@@ -520,5 +520,5 @@ hover:bg-gray-100 dark:hover:bg-gray-600
 - **Omega EDI API Docs**: https://app.omegaedi.com/api/docs/
 - **NHTSA vPIC API**: https://vpic.nhtsa.dot.gov/api/
 - **Square Developer**: https://developer.squareup.com/
-- **Twilio Docs**: https://www.twilio.com/docs
+- **Quo (OpenPhone) API**: https://www.openphone.com/docs/api
 

@@ -4,6 +4,18 @@
  */
 
 import axios from 'axios';
+import { omegaPricingService, type PricingRequest } from './omega-pricing-updated.js';
+
+export interface AvailabilitySlot {
+  startAt: string;
+  locationId: string;
+  appointmentSegments: Array<{
+    durationMinutes: number;
+    teamMemberId: string;
+    serviceVariationId: string;
+    serviceVariationVersion: number;
+  }>;
+}
 
 export interface SquareBookingData {
   customerName: string;
@@ -305,40 +317,163 @@ export class SquareBookingsService {
   }
 
   /**
-   * Get available time slots for a service
+   * Search available time slots using Square Bookings SearchAvailability API
+   * @see https://developer.squareup.com/reference/square/bookings-api/search-availability
    */
-  async getAvailableSlots(date: string, serviceVariationId?: string): Promise<string[]> {
+  async getAvailableSlots(
+    date: string,
+    serviceVariationId?: string,
+    teamMemberId?: string,
+    durationMinutes: number = 120
+  ): Promise<AvailabilitySlot[]> {
     try {
-      // This would use Square's availability API in production
-      // For now, return standard business hours
-      const slots = [
-        '08:00', '09:00', '10:00', '11:00',
-        '13:00', '14:00', '15:00', '16:00'
-      ];
-      
-      // Simulate some slots being unavailable
-      const availableSlots = slots.filter(() => Math.random() > 0.3);
-      
-      return availableSlots;
-    } catch (error) {
-      console.error('Error fetching available slots:', error);
+      // Build the start_at range for the requested date (full day)
+      const startAtMin = `${date}T00:00:00Z`;
+      const startAtMax = `${date}T23:59:59Z`;
+
+      const searchRequest = {
+        query: {
+          filter: {
+            start_at_range: {
+              start_at: startAtMin,
+              end_at: startAtMax,
+            },
+            location_id: this.locationId,
+            segment_filters: [
+              {
+                service_variation_id: serviceVariationId || 'auto-glass-service',
+                team_member_id_filter: teamMemberId ? {
+                  any: [teamMemberId]
+                } : {
+                  all: [] // Any available team member
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const response = await axios.post(
+        `${this.baseUrl}/bookings/availability/search`,
+        searchRequest,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+            'Square-Version': '2024-07-17',
+          },
+        }
+      );
+
+      const availabilities = response.data.availabilities || [];
+
+      // Transform Square response to our AvailabilitySlot interface
+      return availabilities.map((slot: any) => ({
+        startAt: slot.start_at,
+        locationId: slot.location_id,
+        appointmentSegments: slot.appointment_segments?.map((seg: any) => ({
+          durationMinutes: seg.duration_minutes,
+          teamMemberId: seg.team_member_id,
+          serviceVariationId: seg.service_variation_id,
+          serviceVariationVersion: seg.service_variation_version,
+        })) || [],
+      }));
+    } catch (error: any) {
+      console.error('Error fetching available slots from Square:', error.response?.data || error.message);
+
+      // Fallback to business hours if API fails (e.g., service not configured in Square)
+      if (error.response?.status === 400 || error.response?.status === 404) {
+        console.log('Falling back to default business hours');
+        return this.getDefaultBusinessHours(date);
+      }
+
       return [];
     }
   }
 
   /**
-   * Calculate pricing for service (this would integrate with Square's pricing)
+   * Fallback method returning default business hours when Square API is unavailable
    */
-  calculateServicePricing(serviceType: string): number {
-    const pricingMap: Record<string, number> = {
-      'windshield-replacement': 350,
-      'side-window': 150,
-      'rear-window': 250,
-      'quarter-glass': 175,
-      'mobile-service': 50,
+  private getDefaultBusinessHours(date: string): AvailabilitySlot[] {
+    const slots = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
+
+    return slots.map(time => ({
+      startAt: `${date}T${time}:00Z`,
+      locationId: this.locationId,
+      appointmentSegments: [{
+        durationMinutes: 120,
+        teamMemberId: 'auto-assign',
+        serviceVariationId: 'auto-glass-service',
+        serviceVariationVersion: 1,
+      }],
+    }));
+  }
+
+  /**
+   * Get simplified time slots as string array (for backward compatibility)
+   */
+  async getAvailableTimeSlots(date: string, serviceVariationId?: string): Promise<string[]> {
+    const slots = await this.getAvailableSlots(date, serviceVariationId);
+    return slots.map(slot => {
+      const time = new Date(slot.startAt);
+      return `${time.getUTCHours().toString().padStart(2, '0')}:${time.getUTCMinutes().toString().padStart(2, '0')}`;
+    });
+  }
+
+  /**
+   * Calculate pricing for service using Omega EDI pricing
+   */
+  async calculateServicePricing(request: PricingRequest): Promise<{
+    totalPrice: number;
+    laborCost: number;
+    partsCost: number;
+    estimatedDuration: number;
+  }> {
+    try {
+      const pricingResult = await omegaPricingService.generatePricing(request);
+
+      if (pricingResult.success) {
+        return {
+          totalPrice: pricingResult.totalPrice,
+          laborCost: pricingResult.laborCost,
+          partsCost: pricingResult.partsCost,
+          estimatedDuration: pricingResult.estimatedDuration,
+        };
+      }
+
+      // Fallback pricing if Omega fails
+      return this.getFallbackPricing(request.serviceType || 'windshield-replacement');
+    } catch (error) {
+      console.error('Error calculating pricing via Omega EDI:', error);
+      return this.getFallbackPricing(request.serviceType || 'windshield-replacement');
+    }
+  }
+
+  /**
+   * Fallback pricing when Omega EDI is unavailable
+   */
+  private getFallbackPricing(serviceType: string): {
+    totalPrice: number;
+    laborCost: number;
+    partsCost: number;
+    estimatedDuration: number;
+  } {
+    const pricingMap: Record<string, { parts: number; labor: number; duration: number }> = {
+      'windshield-replacement': { parts: 250, labor: 150, duration: 120 },
+      'side-window': { parts: 120, labor: 80, duration: 60 },
+      'rear-window': { parts: 200, labor: 120, duration: 90 },
+      'quarter-glass': { parts: 150, labor: 100, duration: 75 },
+      'mobile-service': { parts: 0, labor: 50, duration: 30 },
     };
 
-    return pricingMap[serviceType] || 300;
+    const pricing = pricingMap[serviceType] || pricingMap['windshield-replacement'];
+
+    return {
+      totalPrice: pricing.parts + pricing.labor,
+      laborCost: pricing.labor,
+      partsCost: pricing.parts,
+      estimatedDuration: pricing.duration,
+    };
   }
 
   /**
@@ -364,9 +499,9 @@ export class SquareBookingsService {
   }
 }
 
-// Export singleton instance with your production credentials
+// Export singleton instance using environment variables
 export const squareBookingsService = new SquareBookingsService(
-  'EAAAEASHtAfuFZ07V23Wse8pEvx2JO0BEZIrnvC_dJsCdjeTGREr-plGYpBqKu6V',
-  'E7GCF80WM2V05',
-  'production'
+  process.env.SQUARE_ACCESS_TOKEN || '',
+  process.env.SQUARE_LOCATION_ID || '',
+  process.env.SQUARE_ENVIRONMENT || 'sandbox'
 );

@@ -37,52 +37,8 @@ interface TeamTableProps {
   onCall?: (member: TeamMember) => void;
 }
 
-// Team data organized by state
-// Specialties match public quote form: Glass Replacement, Chip/Crack Repair, ADAS Calibration, Window Tinting
-const teamData: TeamMember[] = [
-  // California
-  { id: 1, name: 'Mike Johnson', role: 'Lead Technician', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'San Diego, La Mesa, El Cajon (92101-92199)', city: 'Downtown San Diego', state: 'california', status: 'available', unit: 'Mobile Unit #1', phone: '(619) 555-0101' },
-  { id: 2, name: 'Sarah Martinez', role: 'Senior Installer', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'Chula Vista, National City, Coronado', city: 'Downtown San Diego', state: 'california', status: 'busy', unit: 'Shop Based', phone: '(619) 555-0102' },
-  { id: 3, name: 'David Wilson', role: 'Regional Manager', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'Carlsbad, Oceanside, Vista', city: 'Extended Coverage (Santee)', state: 'california', status: 'available', unit: 'Shop #2', phone: '(760) 555-0103' },
-  { id: 4, name: 'Alex Rodriguez', role: 'Mobile Technician', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'North County, Mobile Coverage', city: 'Extended Coverage (Santee)', state: 'california', status: 'en_route', unit: 'Mobile Unit #3', phone: '(760) 555-0104' },
-  { id: 5, name: 'Carlos Garcia', role: 'East County Lead', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'El Cajon, Santee, La Mesa', city: 'East County (El Cajon/Santee)', state: 'california', status: 'available', unit: 'East County Shop', phone: '(619) 555-0105' },
-  { id: 6, name: 'Jennifer Liu', role: 'Quality Inspector', specialties: ['ADAS Calibration', 'Window Tinting'], serviceArea: 'All East County Locations', city: 'East County (El Cajon/Santee)', state: 'california', status: 'busy', unit: 'Quality Unit', phone: '(619) 555-0106' },
-  { id: 7, name: 'Antonio Vasquez', role: 'South Bay Manager', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Chula Vista, National City, Bonita', city: 'South Bay (Chula Vista/National City)', state: 'california', status: 'available', unit: 'Main Shop', phone: '(619) 555-0107' },
-
-  // Arizona
-  { id: 8, name: 'Carlos Rodriguez', role: 'Lead Technician', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Phoenix Downtown, Tempe (85001-85050)', city: 'Phoenix Downtown', state: 'arizona', status: 'available', unit: 'Mobile Unit #AZ1', phone: '(602) 555-0201' },
-  { id: 9, name: 'Amanda Chen', role: 'Senior Installer', specialties: ['ADAS Calibration', 'Glass Replacement'], serviceArea: 'Phoenix Central, Arcadia', city: 'Phoenix Downtown', state: 'arizona', status: 'busy', unit: 'Shop Based', phone: '(602) 555-0202' },
-  { id: 10, name: 'Michael Torres', role: 'Luxury Specialist', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'Scottsdale, Paradise Valley (85250-85268)', city: 'Scottsdale / Paradise Valley', state: 'arizona', status: 'available', unit: 'Shop #AZ2', phone: '(480) 555-0203' },
-  { id: 11, name: 'Rachel Kim', role: 'Mobile Technician', specialties: ['Chip/Crack Repair', 'Glass Replacement'], serviceArea: 'North Scottsdale, Fountain Hills', city: 'Scottsdale / Paradise Valley', state: 'arizona', status: 'en_route', unit: 'Mobile Unit #AZ3', phone: '(480) 555-0204' },
-  { id: 12, name: 'Brandon Lee', role: 'East Valley Lead', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'Mesa, Gilbert, Chandler (85201-85299)', city: 'East Valley (Mesa/Gilbert)', state: 'arizona', status: 'available', unit: 'Shop #AZ3', phone: '(480) 555-0205' },
-  { id: 13, name: 'Lisa Nguyen', role: 'Technician', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Tempe, Apache Junction', city: 'East Valley (Mesa/Gilbert)', state: 'arizona', status: 'available', unit: 'Mobile Unit #AZ4', phone: '(480) 555-0206' },
-  { id: 14, name: 'Kevin Martinez', role: 'Tucson Manager', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'Tucson Metro, Oro Valley', city: 'Tucson', state: 'arizona', status: 'available', unit: 'Tucson Shop', phone: '(520) 555-0207' },
-
-  // Texas
-  { id: 15, name: 'Robert Thompson', role: 'Dallas Lead', specialties: ['ADAS Calibration', 'Glass Replacement'], serviceArea: 'Dallas Downtown, Uptown (75201-75250)', city: 'Dallas', state: 'texas', status: 'available', unit: 'Mobile Unit #TX1', phone: '(214) 555-0301' },
-  { id: 16, name: 'Maria Gonzalez', role: 'Senior Technician', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'Highland Park, University Park', city: 'Dallas', state: 'texas', status: 'busy', unit: 'Shop #TX1', phone: '(214) 555-0302' },
-  { id: 17, name: 'James Anderson', role: 'Fort Worth Lead', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Fort Worth, Arlington', city: 'Fort Worth', state: 'texas', status: 'available', unit: 'Shop #TX2', phone: '(817) 555-0303' },
-  { id: 18, name: 'Michelle Davis', role: 'Mobile Technician', specialties: ['Chip/Crack Repair', 'Glass Replacement'], serviceArea: 'Keller, Southlake, Grapevine', city: 'Fort Worth', state: 'texas', status: 'en_route', unit: 'Mobile Unit #TX2', phone: '(817) 555-0304' },
-  { id: 19, name: 'Daniel Hernandez', role: 'Houston Manager', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'Houston Downtown, Midtown, Galleria', city: 'Houston', state: 'texas', status: 'available', unit: 'Shop #TX3', phone: '(713) 555-0305' },
-  { id: 20, name: 'Ashley Williams', role: 'Senior Installer', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'The Heights, Montrose', city: 'Houston', state: 'texas', status: 'available', unit: 'Mobile Unit #TX3', phone: '(713) 555-0306' },
-  { id: 21, name: 'Christopher Brown', role: 'Technician', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Katy, Sugar Land, Missouri City', city: 'Katy/Sugar Land', state: 'texas', status: 'busy', unit: 'Mobile Unit #TX4', phone: '(281) 555-0307' },
-  { id: 22, name: 'Stephanie Taylor', role: 'Austin Lead', specialties: ['ADAS Calibration', 'Glass Replacement'], serviceArea: 'Austin Downtown, Domain, South Congress', city: 'Austin', state: 'texas', status: 'available', unit: 'Shop #TX4', phone: '(512) 555-0308' },
-  { id: 23, name: 'Marcus Johnson', role: 'San Antonio Lead', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'San Antonio, Alamo Heights, Stone Oak', city: 'San Antonio', state: 'texas', status: 'available', unit: 'Shop #TX5', phone: '(210) 555-0309' },
-
-  // Nevada
-  { id: 24, name: 'Tyler Mitchell', role: 'Vegas Strip Lead', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'Las Vegas Strip, Paradise (89109-89169)', city: 'Las Vegas Strip', state: 'nevada', status: 'available', unit: 'Shop #NV1', phone: '(702) 555-0401' },
-  { id: 25, name: 'Amber White', role: 'Senior Technician', specialties: ['ADAS Calibration', 'Glass Replacement'], serviceArea: 'Downtown, Arts District', city: 'Las Vegas Strip', state: 'nevada', status: 'busy', unit: 'Mobile Unit #NV1', phone: '(702) 555-0402' },
-  { id: 26, name: 'Jordan Cooper', role: 'Henderson Manager', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Henderson, Green Valley, Anthem', city: 'Henderson', state: 'nevada', status: 'available', unit: 'Shop #NV2', phone: '(702) 555-0403' },
-  { id: 27, name: 'Brianna Scott', role: 'Mobile Technician', specialties: ['Chip/Crack Repair', 'Glass Replacement'], serviceArea: 'Boulder City, Lake Las Vegas', city: 'Henderson', state: 'nevada', status: 'en_route', unit: 'Mobile Unit #NV2', phone: '(702) 555-0404' },
-  { id: 28, name: 'Nathan Roberts', role: 'North Vegas Lead', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'North Las Vegas, Summerlin, Centennial Hills', city: 'North LV/Summerlin', state: 'nevada', status: 'available', unit: 'Shop #NV3', phone: '(702) 555-0405' },
-  { id: 29, name: 'Kayla Adams', role: 'Reno Manager', specialties: ['Glass Replacement', 'ADAS Calibration'], serviceArea: 'Reno, Sparks, Carson City', city: 'Reno', state: 'nevada', status: 'available', unit: 'Shop #NV4', phone: '(775) 555-0406' },
-
-  // Florida
-  { id: 30, name: 'Derek Foster', role: 'Miami Lead', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'Miami Beach, Downtown, Brickell', city: 'Miami', state: 'florida', status: 'available', unit: 'Shop #FL1', phone: '(305) 555-0501' },
-  { id: 31, name: 'Nicole Reed', role: 'Senior Installer', specialties: ['ADAS Calibration', 'Glass Replacement'], serviceArea: 'Coral Gables, Coconut Grove', city: 'Miami', state: 'florida', status: 'busy', unit: 'Mobile Unit #FL1', phone: '(305) 555-0502' },
-  { id: 32, name: 'Ryan Clark', role: 'Tampa Manager', specialties: ['Glass Replacement', 'Chip/Crack Repair'], serviceArea: 'Tampa Downtown, Ybor City, Hyde Park', city: 'Tampa', state: 'florida', status: 'available', unit: 'Shop #FL2', phone: '(813) 555-0503' },
-  { id: 33, name: 'Jessica Turner', role: 'Orlando Lead', specialties: ['Glass Replacement', 'Window Tinting'], serviceArea: 'Orlando Downtown, International Drive', city: 'Orlando', state: 'florida', status: 'available', unit: 'Shop #FL3', phone: '(407) 555-0504' },
-];
+// Team data - populated from database/API in production
+const teamData: TeamMember[] = [];
 
 const states = [
   { value: 'all', label: 'All States' },
@@ -491,10 +447,8 @@ export function TeamTable({ onMessage, onCall }: TeamTableProps) {
         {filteredMembers.length === 0 && (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <Users className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-            <p>No team members found matching your criteria</p>
-            <Button variant="link" onClick={clearFilters} className="mt-2">
-              Clear filters to see all team members
-            </Button>
+            <p className="font-medium">No team members yet</p>
+            <p className="text-sm mt-1">Team members will appear here once added.</p>
           </div>
         )}
       </CardContent>

@@ -67,7 +67,7 @@ export default function Features() {
               </Button>
             </Link>
             <Badge variant="secondary">
-              Express Auto Glass Features
+              Wheels and Glass Features
             </Badge>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function Features() {
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Why Choose Express Auto Glass?
+            Why Choose Wheels and Glass?
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             We're not just another glass company. We're your partners in keeping you safe 
@@ -152,7 +152,7 @@ export default function Features() {
         <div className="text-center bg-blue-600 text-white p-8 rounded-lg">
           <h2 className="text-2xl font-bold mb-4">Ready to Experience the Difference?</h2>
           <p className="text-blue-100 mb-6">
-            Join thousands of satisfied customers who trust Express Auto Glass for their auto glass needs.
+            Join thousands of satisfied customers who trust Wheels and Glass for their auto service needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/">

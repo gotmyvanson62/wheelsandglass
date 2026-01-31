@@ -1,21 +1,18 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Link } from 'wouter';
 import { QuoteForm } from '@/components/quote-form';
-import { 
-  Car, 
-  Shield, 
-  Clock, 
-  CheckCircle, 
+import {
+  Car,
+  Shield,
+  Clock,
+  CheckCircle,
   ArrowRight,
   Phone,
   MapPin,
   Star,
   FileText,
-  Search,
-  Navigation,
   Zap,
   Award,
   Wrench,
@@ -28,6 +25,14 @@ import {
 export default function Landing() {
   const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
 
+  const openQuoteForm = () => {
+    setIsQuoteFormOpen(true);
+  };
+
+  const closeQuoteForm = () => {
+    setIsQuoteFormOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white force-light">
       {/* Header */}
@@ -35,20 +40,17 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Car className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Car className="w-6 h-6 text-white" />
               </div>
-              <h1 className="ml-3 text-xl font-bold text-gray-900">Express Auto Glass</h1>
+              <h1 className="ml-3 text-xl font-bold text-gray-900">Wheels and Glass</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50" asChild>
-                <a href="tel:+1-800-EXPRESS" className="flex items-center">
+              <Button variant="outline" size="sm" className="border-gray-400 text-gray-600 hover:bg-gray-50" asChild>
+                <a href="tel:+17607153400" className="flex items-center">
                   <Phone className="w-4 h-4 mr-2" />
                   Call Now
                 </a>
-              </Button>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setIsQuoteFormOpen(true)} data-testid="button-header-get-quote">
-                Get Quote
               </Button>
             </div>
           </div>
@@ -56,39 +58,49 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            Express Auto Glass
-            <span className="text-blue-600 block">Repair & Replacement</span>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+        <div className="text-center max-w-3xl mx-auto">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            Wheels and Glass
+            <span className="block text-blue-600">Auto Services</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Fast, reliable auto glass services with professional installation. Get an instant quote 
-            and schedule your appointment today for windshields, windows, and all auto glass needs.
-          </p>
+          {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" asChild>
-              <a href="tel:+1-800-EXPRESS" className="flex items-center justify-center">
-                <Phone className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                <span className="text-sm sm:text-base">Call for Quote</span>
+            <Button size="lg" variant="outline" className="border-gray-400" asChild>
+              <a href="tel:+17607153400" className="flex items-center">
+                <Phone className="w-5 h-5 mr-2" />
+                Call for Quote
               </a>
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="w-full sm:w-auto border-blue-600 text-blue-600 hover:bg-blue-50"
-              onClick={() => setIsQuoteFormOpen(true)}
-              data-testid="button-hero-get-quote"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={openQuoteForm}
+              data-testid="button-get-quote"
             >
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              <span className="text-sm sm:text-base whitespace-nowrap">Get Online Quote</span>
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
+              <FileText className="w-5 h-5 mr-2" />
+              Request Quote
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+            <div className="flex items-center">
+              <Star className="w-5 h-5 text-yellow-500 mr-2" />
+              <span>4.9★ Rating</span>
+            </div>
+            <div className="flex items-center">
+              <Shield className="w-5 h-5 text-green-500 mr-2" />
+              <span>Lifetime Warranty</span>
+            </div>
+            <div className="flex items-center">
+              <Clock className="w-5 h-5 text-blue-500 mr-2" />
+              <span>Same-Day Service</span>
+            </div>
           </div>
         </div>
       </section>
-
-
 
       {/* Services Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -96,7 +108,7 @@ export default function Landing() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Services</h2>
           <p className="text-lg text-gray-600">Professional auto glass solutions for all your vehicle needs</p>
         </div>
-        
+
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="text-center">
             <CardHeader>
@@ -148,7 +160,7 @@ export default function Landing() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Learn More</h2>
           <p className="text-lg text-gray-600">Explore our comprehensive auto glass solutions and specialized services</p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link href="/features">
             <Card className="cursor-pointer hover:shadow-lg transition-shadow duration-200 h-full">
@@ -160,7 +172,7 @@ export default function Landing() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 text-center">
-                  Discover what makes Express Auto Glass different - from same-day service to lifetime warranties.
+                  Discover what makes Wheels and Glass different - from same-day service to lifetime warranties.
                 </p>
               </CardContent>
             </Card>
@@ -251,10 +263,10 @@ export default function Landing() {
       {/* Contact Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="flex justify-center">
-          <Card className="hover:shadow-lg transition-shadow max-w-md w-full">
+          <Card className="hover:shadow-lg transition-shadow max-w-lg w-full">
             <CardHeader>
               <CardTitle className="flex items-center justify-center">
-                <Phone className="w-6 h-6 mr-3 text-blue-600" />
+                <Phone className="w-6 h-6 mr-3 text-gray-700" />
                 Contact Us
               </CardTitle>
             </CardHeader>
@@ -262,13 +274,20 @@ export default function Landing() {
               <p className="text-gray-600 mb-4 text-center">
                 Get an instant quote or schedule your service. Our expert technicians are ready to help.
               </p>
-              <Button className="bg-blue-600 hover:bg-blue-700 w-full mb-3">
-                Call for Immediate Service
-                <Phone className="w-4 h-4 ml-2" />
+              <Button className="bg-gray-800 hover:bg-gray-900 w-full mb-4" asChild>
+                <a href="tel:+17607153400">
+                  Call for Immediate Service
+                  <Phone className="w-4 h-4 ml-2" />
+                </a>
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => setIsQuoteFormOpen(true)} data-testid="button-service-quote">
-                Request Online Quote
-                <ArrowRight className="w-4 h-4 ml-2" />
+              <Button
+                variant="outline"
+                className="w-full border-blue-500 text-blue-600 hover:bg-blue-50"
+                onClick={openQuoteForm}
+                data-testid="button-contact-quote"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Request Quote
               </Button>
             </CardContent>
           </Card>
@@ -279,14 +298,14 @@ export default function Landing() {
       <footer className="bg-gray-50 border-t border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col sm:flex-row justify-between items-center text-gray-600">
-            <p>&copy; 2025 Express Auto Glass. Professional Auto Glass Services.</p>
+            <p>&copy; 2025 Wheels and Glass. Professional Auto Services.</p>
             <div className="mt-2 sm:mt-0 flex gap-4">
-              <button 
-                onClick={() => setIsQuoteFormOpen(true)}
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors bg-transparent border-none cursor-pointer"
+              <button
+                onClick={openQuoteForm}
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors bg-transparent border-none cursor-pointer"
                 data-testid="button-footer-quote"
               >
-                Request Quote
+                Get Quote
               </button>
               <Link href="/service-areas">
                 <button className="text-sm text-gray-500 hover:text-gray-700 transition-colors bg-transparent border-none cursor-pointer" data-testid="button-footer-service-areas">
@@ -303,10 +322,10 @@ export default function Landing() {
         </div>
       </footer>
 
-      {/* Quote Form Modal */}
-      <QuoteForm 
-        isOpen={isQuoteFormOpen} 
-        onClose={() => setIsQuoteFormOpen(false)} 
+      {/* Quote Form Modal - no division prop, form handles selection internally */}
+      <QuoteForm
+        isOpen={isQuoteFormOpen}
+        onClose={closeQuoteForm}
       />
     </div>
   );

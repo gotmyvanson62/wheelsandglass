@@ -18,8 +18,6 @@ export default function AdminLoginSimple() {
     setIsLoading(true);
     setError('');
 
-    console.log('🔑 Login attempt initiated');
-
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
@@ -30,22 +28,17 @@ export default function AdminLoginSimple() {
         body: JSON.stringify({ password }),
       });
 
-      console.log('📡 Response status:', response.status);
       const data = await response.json();
-      console.log('📦 Response data:', data);
-      
+
       if (response.ok && data.success) {
-        console.log('✅ Login successful, redirecting...');
         // Small delay to ensure session is fully established
         setTimeout(() => {
           setLocation('/admin/dashboard');
         }, 100);
       } else {
-        console.log('❌ Login failed:', data.message);
         setError(data.message || 'Invalid password. Please try again.');
       }
     } catch (err) {
-      console.error('💥 Login error:', err);
       setError('Connection error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -62,7 +55,7 @@ export default function AdminLoginSimple() {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Express Auto Glass</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900">Wheels and Glass</CardTitle>
             <CardDescription className="text-gray-600 mt-2">
               Admin Portal Access
             </CardDescription>
@@ -104,11 +97,6 @@ export default function AdminLoginSimple() {
             </Button>
           </form>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-500">
-              Secure access to integration management
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -308,8 +308,5 @@ export class OmegaPricingService {
   }
 }
 
-// Export singleton instance with your credentials
-export const omegaPricingService = new OmegaPricingService(
-  'https://app.omegaedi.com/api/2.0/',
-  'C55KeMr7T7JaHtKS'
-);
+// Export singleton instance using environment variables
+export const omegaPricingService = new OmegaPricingService();
