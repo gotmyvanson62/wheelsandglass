@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300" fill="none">
+  <!-- Car Body Outline -->
+  <path d="M80 180 L80 220 L520 220 L520 180 L480 180 L450 120 L150 120 L120 180 Z"
+        fill="#E5E7EB" stroke="#6B7280" stroke-width="2"/>
+
+  <!-- Roof -->
+  <path d="M150 120 L180 80 L420 80 L450 120"
+        fill="#D1D5DB" stroke="#6B7280" stroke-width="2"/>
+
+  <!-- Windows Background -->
+  <!-- Front Windshield -->
+  <path d="M155 118 L182 82 L280 82 L280 118 Z"
+        fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Rear Windshield -->
+  <path d="M320 82 L418 82 L445 118 L320 118 Z"
+        fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Front Driver Window -->
+  <path d="M122 178 L152 122 L200 122 L200 178 Z"
+        fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Rear Driver Window -->
+  <path d="M210 122 L280 122 L280 178 L210 178 Z"
+        fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Rear Passenger Window -->
+  <path d="M320 122 L390 122 L390 178 L320 178 Z"
+        fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Front Passenger Window -->
+  <path d="M400 122 L448 122 L478 178 L400 178 Z"
+        fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Wheels -->
+  <circle cx="140" cy="220" r="30" fill="#374151" stroke="#1F2937" stroke-width="2"/>
+  <circle cx="140" cy="220" r="15" fill="#6B7280"/>
+  <circle cx="460" cy="220" r="30" fill="#374151" stroke="#1F2937" stroke-width="2"/>
+  <circle cx="460" cy="220" r="15" fill="#6B7280"/>
+
+  <!-- Labels -->
+  <text x="217" y="60" font-family="Arial, sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="600">Front Windshield</text>
+  <line x1="217" y1="62" x2="217" y2="78" stroke="#6B7280" stroke-width="1"/>
+
+  <text x="383" y="60" font-family="Arial, sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="600">Rear Windshield</text>
+  <line x1="383" y1="62" x2="383" y2="78" stroke="#6B7280" stroke-width="1"/>
+
+  <text x="60" y="150" font-family="Arial, sans-serif" font-size="10" fill="#1F2937" text-anchor="end" font-weight="500">Front</text>
+  <text x="60" y="162" font-family="Arial, sans-serif" font-size="10" fill="#1F2937" text-anchor="end" font-weight="500">Driver</text>
+  <line x1="65" y1="150" x2="120" y2="150" stroke="#6B7280" stroke-width="1"/>
+
+  <text x="245" y="200" font-family="Arial, sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="500">Rear Driver</text>
+  <line x1="245" y1="185" x2="245" y2="178" stroke="#6B7280" stroke-width="1"/>
+
+  <text x="355" y="200" font-family="Arial, sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="500">Rear Passenger</text>
+  <line x1="355" y1="185" x2="355" y2="178" stroke="#6B7280" stroke-width="1"/>
+
+  <text x="540" y="150" font-family="Arial, sans-serif" font-size="10" fill="#1F2937" text-anchor="start" font-weight="500">Front</text>
+  <text x="540" y="162" font-family="Arial, sans-serif" font-size="10" fill="#1F2937" text-anchor="start" font-weight="500">Passenger</text>
+  <line x1="480" y1="150" x2="535" y2="150" stroke="#6B7280" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="300" y="280" font-family="Arial, sans-serif" font-size="12" fill="#6B7280" text-anchor="middle">Click on the windows you need serviced</text>
+</svg>

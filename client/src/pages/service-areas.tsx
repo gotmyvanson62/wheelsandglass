@@ -1487,44 +1487,16 @@ export default function ServiceAreas() {
   return (
     <div className="min-h-screen bg-white force-light">
       {/* Header Navigation */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2" data-testid="link-home">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">EG</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">Express Auto Glass</span>
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Link to="/">
+              <Button variant="ghost" className="text-blue-600 hover:text-blue-700" data-testid="link-home">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Button>
             </Link>
-            
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors" data-testid="nav-home">
-                Home
-              </Link>
-              <Link to="/service-areas" className="text-blue-600 font-medium" data-testid="nav-service-areas">
-                Service Areas
-              </Link>
-              <Link to="/quote" className="text-gray-600 hover:text-gray-900 transition-colors" data-testid="nav-quote">
-                Get Quote
-              </Link>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700" data-testid="button-call-now">
-                <Phone className="w-4 h-4 mr-2" />
-                Call Now
-              </Button>
-            </nav>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setLocation('/')}
-                data-testid="button-mobile-home"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Home
-              </Button>
-            </div>
+            <span className="text-lg font-semibold text-gray-900">Service Areas</span>
           </div>
         </div>
       </header>

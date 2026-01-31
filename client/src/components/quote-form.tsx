@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { SERVICE_LOCATIONS, WINDOW_TYPES, SERVICE_TYPES, VEHICLE_YEARS, VEHICLE_MAKES } from '@/data/locations';
 import { apiClient, handleApiError } from '@/lib/api-client';
-import vehicleGlassDiagram from '@/assets/vehicle-glass-diagram.webp';
+import vehicleGlassDiagram from '@/assets/vehicle-glass-diagram.svg';
 import { 
   Car, 
   Upload, 
