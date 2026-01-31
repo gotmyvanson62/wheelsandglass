@@ -3,8 +3,8 @@ node_modules/
 .pnp
 .pnp.js
 
-# Testing
-coverage/
+# Testing (root-level coverage reports only, not UI components)
+/coverage/
 
 # Production
 dist/
