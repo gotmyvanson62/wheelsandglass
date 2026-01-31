@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { InsertNagsPart, NagsPart, VehicleLookup } from '@shared/schema';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 
 export interface NagsPartOption {
   nagsNumber: string;

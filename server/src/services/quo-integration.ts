@@ -1,4 +1,4 @@
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 import { quoSmsService } from './quo-sms-service.js';
 import type { Transaction, JobRequest, Subcontractor } from '@shared/schema';
 

@@ -1,4 +1,4 @@
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 import { OmegaEDIService } from './omega-edi';
 import type { Transaction, InsertTransaction } from '@shared/schema';
 

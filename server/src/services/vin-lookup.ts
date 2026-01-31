@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { InsertVehicleLookup, VehicleLookup } from '@shared/schema';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 
 export interface VehicleDetails {
   vin: string;

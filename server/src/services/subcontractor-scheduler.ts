@@ -7,7 +7,7 @@ import type {
   SubcontractorAvailability,
   NagsPart 
 } from '@shared/schema';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 
 export interface SchedulingRequest {
   transactionId: number;

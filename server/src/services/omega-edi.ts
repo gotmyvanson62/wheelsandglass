@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { InsertTransaction } from '@shared/schema';
 import { calendarService } from './calendar';
-import { NotificationService } from '../notification-service';
+import { NotificationService } from '../notification-service.js';
 
 export interface OmegaEDIJobData {
   salesman_1_id: string;

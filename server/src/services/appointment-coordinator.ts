@@ -5,7 +5,7 @@
 
 import { squareBookingsService, type SquareBookingData } from './square-appointments';
 import { OmegaEDIService } from './omega-edi';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 
 export interface AppointmentRequest {
   transactionId: number;
