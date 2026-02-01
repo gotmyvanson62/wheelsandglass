@@ -33,16 +33,23 @@ async function run() {
   // Simulated external attempt counter
   let externalAttempted = 0;
 
-  // Simulated external lookup (mocked) — set shouldSucceed=false to test retry enqueue
-  const shouldSucceed = true; // set false to simulate failure and trigger retry enqueue
+  // Read SHOULD_SUCCEED from env (default true)
+  const shouldSucceed = (process.env.SHOULD_SUCCEED || 'true').toLowerCase() === 'true';
 
-  externalAttempted += 1;
+  externalAttempted += 1; // single guarded external attempt
   if (shouldSucceed) {
     console.log('Mock external lookup succeeded for', SAMPLE_VIN);
     // Optionally persist a cache row (lightweight) - uses raw SQL to avoid schema imports
     try {
       await sql`INSERT INTO nags_cache (vin_pattern, year, make, model, glass_position, nags_part_number, source, created_at, updated_at) VALUES (${vehicle.vinPattern}, ${vehicle.year}, ${vehicle.make}, ${vehicle.model}, 'windshield', 'NAGS-MOCK-1', 'omega', now(), now()) ON CONFLICT DO NOTHING`;
       console.log('Inserted mock cache row');
+      // Show any matching cache rows
+      try {
+        const rows = await sql`SELECT id, vin_pattern, glass_position, nags_part_number, source FROM nags_cache WHERE vin_pattern = ${vehicle.vinPattern}`;
+        console.log('Cache rows for VIN pattern:', rows);
+      } catch (err) {
+        console.warn('Failed to query cache rows (ok):', err.message || err);
+      }
     } catch (err) {
       console.warn('Failed to insert mock cache row (ok):', err.message || err);
     }
@@ -51,6 +58,12 @@ async function run() {
     try {
       const insert = await sql`INSERT INTO retry_queue (operation, payload, attempts, max_attempts, next_attempt_at, last_error, is_dead_letter, created_at, updated_at) VALUES ('nags_lookup', ${JSON.stringify({ vin: SAMPLE_VIN })}, 0, 5, now(), NULL, false, now(), now()) RETURNING id`;
       console.log('Retry queued with id:', insert[0].id);
+      try {
+        const rows = await sql`SELECT id, operation, payload, attempts, next_attempt_at, is_dead_letter FROM retry_queue WHERE id = ${insert[0].id}`;
+        console.log('Inserted retry row:', rows[0]);
+      } catch (qerr) {
+        console.warn('Failed to query retry row (ok):', qerr.message || qerr);
+      }
     } catch (err) {
       console.error('Failed to enqueue retry:', err.message || err);
     }
