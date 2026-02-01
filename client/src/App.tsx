@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
 import React from "react";
 import SidebarLayout from "@/components/layout/sidebar-layout";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -21,7 +22,6 @@ import CRM from "./pages/CRM";
 import OmegaAdmin from "@/pages/omega-admin";
 import VinLookup from "@/pages/vin-lookup";
 import CustomerPortal from "@/pages/customer-portal";
-import AdminLoginSimple from "@/pages/admin-login-simple";
 import Features from "@/pages/features";
 import OEM from "@/pages/oem";
 import WindshieldRepair from "@/pages/windshield-repair";
@@ -164,14 +164,16 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -23,8 +23,8 @@ router.get('/', authMiddleware, async (_req: Request, res: Response) => {
     const RPJ_DEFAULT = 27500; // $275.00 in cents
 
     const payments = transactions
-      .filter(t => t.status === 'success')
-      .map(t => ({
+      .filter((t: any) => t.status === 'success')
+      .map((t: any) => ({
         id: t.id,
         transactionId: t.id,
         customerId: t.customerId,
@@ -63,12 +63,12 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
         id: transaction.id,
         transactionId: transaction.id,
         customerId: transaction.customerId,
-        amount: transaction.amount || RPJ_DEFAULT,
+        amount: transaction.finalPrice || RPJ_DEFAULT,
         method: 'card',
         status: transaction.paymentStatus || transaction.status,
         customerName: transaction.customerName,
         customerEmail: transaction.customerEmail,
-        createdAt: transaction.createdAt || transaction.timestamp,
+        createdAt: transaction.timestamp,
       }
     });
   } catch (error) {

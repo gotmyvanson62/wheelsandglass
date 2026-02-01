@@ -1,25 +1,30 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request, Response, NextFunction, RequestHandler } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { storage } from "./storage";
-import { OmegaEDIService } from "./services/omega-edi";
-import { FieldMapperService } from "./services/field-mapper";
-import { vinLookupService } from "./services/vin-lookup";
-import { nagsLookupService } from "./services/nags-lookup";
-import { subcontractorScheduler } from "./services/subcontractor-scheduler";
+import { storage } from "./storage.js";
+import { OmegaEDIService } from "./services/omega-edi.js";
+import { FieldMapperService } from "./services/field-mapper.js";
+import { vinLookupService } from "./services/vin-lookup.js";
+import { nagsLookupService } from "./services/nags-lookup.js";
+import { subcontractorScheduler } from "./services/subcontractor-scheduler.js";
 import { insertTransactionSchema, insertActivityLogSchema, insertAppointmentSchema, insertSmsInteractionSchema, insertQuoteSubmissionSchema, insertAdminUserSchema } from "@shared/schema";
-import { PasswordService } from "./services/password-service";
-import { appointmentCoordinator } from "./services/appointment-coordinator";
-import { squareBookingsService } from "./services/square-bookings-updated";
-import { omegaPricingService } from "./services/omega-pricing-updated";
-import { squarePaymentService } from "./services/square-payment-service";
-import { quoIntegrationService, twilioFlexService } from "./services/quo-integration";
-import { optimizedFlowService } from "./services/optimized-flow-service";
-import { ApiService } from "./services/api-service";
+import { PasswordService } from "./services/password-service.js";
+import { appointmentCoordinator } from "./services/appointment-coordinator.js";
+import { squareBookingsService } from "./services/square-bookings-updated.js";
+import { omegaPricingService } from "./services/omega-pricing-updated.js";
+import { squarePaymentService } from "./services/square-payment-service.js";
+import { quoIntegrationService, twilioFlexService } from "./services/quo-integration.js";
+import { optimizedFlowService } from "./services/optimized-flow-service.js";
+import { ApiService } from "./services/api-service.js";
 import { z } from "zod";
-import { analyticsService } from "./analytics";
-import { NotificationService } from "./notification-service";
+import { analyticsService } from "./analytics.js";
+import { NotificationService } from "./notification-service.js";
 import { WebSocketServer, WebSocket } from 'ws';
+import { authMiddleware } from './middleware/auth.middleware.js';
+
+// Alias for authMiddleware
+const requireAuth = authMiddleware;
 
 // Square Pricing Integration Service imports handled below as needed
 
@@ -69,8 +74,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     NotificationService.addConnection(ws);
     
     // Send initial unresolved notifications
-    NotificationService.getUnresolvedNotifications().then(notifications => {
-      notifications.forEach(notification => {
+    NotificationService.getUnresolvedNotifications().then((notifications: any[]) => {
+      notifications.forEach((notification: any) => {
         ws.send(JSON.stringify({
           type: 'notification',
           notification: {
@@ -92,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Apply rate limiting to webhook routes
-  app.use('/api/webhooks', webhookRateLimit);
+  app.use('/api/webhooks', webhookRateLimit as unknown as RequestHandler);
 
   // Global error handler
   // SECURITY: Sanitize error details in production to prevent information leakage
@@ -375,20 +380,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Square webhook signature verification (production security)
   function verifySquareWebhook(req: any): boolean {
-    // In production, verify Square webhook signature
-    const signature = req.headers['x-square-signature'];
+    const signature = req.headers['x-square-hmacsha256-signature'];
     const webhookSecret = process.env.SQUARE_WEBHOOK_SECRET;
-    
-    if (!signature || !webhookSecret) {
-      console.warn('Missing Square webhook signature or secret');
-      return process.env.NODE_ENV !== 'production'; // Allow in development
+    const notificationUrl = process.env.SQUARE_WEBHOOK_URL || req.protocol + '://' + req.get('host') + req.originalUrl;
+
+    // In development without secret configured, log warning but allow
+    if (!webhookSecret) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('SECURITY: Square webhook secret not configured in production');
+        return false;
+      }
+      console.warn('Square webhook secret not configured - allowing in development mode');
+      return true;
     }
-    
-    // TODO: Implement actual signature verification for production
-    // const expectedSignature = crypto.createHmac('sha1', webhookSecret).update(JSON.stringify(req.body)).digest('base64');
-    // return signature === expectedSignature;
-    
-    return true; // For now, allow all (implement proper verification for production)
+
+    if (!signature) {
+      console.warn('Missing Square webhook signature header');
+      return process.env.NODE_ENV !== 'production';
+    }
+
+    // Square uses: HMAC-SHA256(webhookSignatureKey, notificationUrl + body)
+    const body = JSON.stringify(req.body);
+    const stringToSign = notificationUrl + body;
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(stringToSign)
+      .digest('base64');
+
+    // Use timing-safe comparison to prevent timing attacks
+    const signatureBuffer = Buffer.from(signature, 'base64');
+    const expectedBuffer = Buffer.from(expectedSignature, 'base64');
+
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      console.warn('Square webhook signature length mismatch');
+      return false;
+    }
+
+    const isValid = crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+    if (!isValid) {
+      console.warn('Square webhook signature verification failed');
+    }
+    return isValid;
   }
 
   // NEW: Square booking webhook → Omega EDI pricing → Payment link generation
@@ -615,7 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             if (response.ok) {
-              const data = await response.json();
+              const data: any = await response.json();
               res.json({
                 success: true,
                 service: 'Square',
@@ -699,8 +731,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Working Square booking with Omega pricing endpoint
+  // Working Square booking with Omega pricing endpoint (development only)
   app.post("/api/test-square-pricing", async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ error: 'Not found' });
+    }
     try {
       const {
         customerName = 'Customer',
@@ -1021,7 +1056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const transactions = await storage.getTransactions({ status: 'pending' });
       
-      const activeJobs = transactions.map(t => ({
+      const activeJobs = transactions.map((t: any) => ({
         id: t.id,
         customerName: t.customerName,
         vehicleInfo: `${t.vehicleYear || ''} ${t.vehicleMake || ''} ${t.vehicleModel || ''}`.trim() || 'Vehicle details pending',
@@ -1258,7 +1293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const processingTimes = [850, 1200, 950, 1100, 780, 1350, 920];
       const optimizedTransactions = recentTransactions.slice(0, 10);
 
-      const successCount = optimizedTransactions.filter(t => t.status === 'success').length;
+      const successCount = optimizedTransactions.filter((t: any) => t.status === 'success').length;
       const totalCount = Math.max(optimizedTransactions.length, 1);
       const successRate = Math.round((successCount / totalCount) * 100) || 94;
       const errorRate = 100 - successRate;
@@ -1385,8 +1420,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy endpoint for backward compatibility
+  // Legacy endpoint for backward compatibility (development only)
   app.post("/api/test-omega-connection", async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ error: 'Not found' });
+    }
     try {
       const apiKey = process.env.OMEGA_EDI_API_KEY;
       if (!apiKey) {
@@ -1421,12 +1459,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Find related appointment by phone number
       const appointments = await storage.getAppointmentsByPhone(phoneNumber);
-      const activeAppointment = appointments.find(apt => 
+      const activeAppointment = appointments.find((apt: any) =>
         apt.status === 'scheduled' || apt.status === 'rescheduling'
       );
 
-      // Process the SMS message  
-      const smsProcessor = await import('./services/sms-processor');
+      // Process the SMS message
+      const smsProcessor = await import('./services/sms-processor.js');
       const rescheduleRequest = await smsProcessor.smsProcessorService.processInboundSms(
         phoneNumber, 
         message, 
@@ -1503,9 +1541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find the most recent transaction for this phone number
       const transactions = await storage.getTransactions();
       const customerTransaction = transactions
-        .filter(t => t.customerPhone && t.customerPhone.replace(/\D/g, '') === cleanPhone)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      
+        .filter((t: any) => t.customerPhone && t.customerPhone.replace(/\D/g, '') === cleanPhone)
+        .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
       if (!customerTransaction) {
         return res.status(404).json({
           success: false,
@@ -1581,8 +1619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find the transaction for this phone number
       const transactions = await storage.getTransactions();
       const customerTransaction = transactions
-        .filter(t => t.customerPhone && t.customerPhone.replace(/\D/g, '') === cleanPhone)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+        .filter((t: any) => t.customerPhone && t.customerPhone.replace(/\D/g, '') === cleanPhone)
+        .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
       if (customerTransaction) {
         // Update transaction status to booked
@@ -1624,10 +1662,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-
-  // Import and register SMS routes
-  const smsRoutes = await import('./routes/sms');
-  app.use('/api/sms', smsRoutes.default);
 
   return server;
 }
@@ -1681,7 +1715,7 @@ async function processTransaction(transactionId: number) {
     const omegaService = new OmegaEDIService(baseUrl, apiKey);
     
     // Prepare job data
-    const jobData = OmegaEDIService.createJobDataFromTransaction(transaction, mappedData);
+    const jobData = OmegaEDIService.createJobDataFromTransaction(transaction as any, mappedData);
     
     // Create job in Omega EDI
     const result = await omegaService.createJob(jobData);
@@ -1715,29 +1749,28 @@ async function processTransaction(transactionId: number) {
       details: { error: error instanceof Error ? error.message : String(error) },
     });
     
-    // Schedule retry if within limits
-    const maxRetries = 3;
-    const transaction = await storage.getTransaction(transactionId);
-    if (transaction && transaction.retryCount < maxRetries) {
+    // Enqueue retry entry into persistent retry queue
+    try {
+      const transaction = await storage.getTransaction(transactionId);
       const retryDelayConfig = await storage.getConfiguration('retry_delay_seconds');
       const retryDelay = parseInt(retryDelayConfig?.value || '60') * 1000;
-      
-      setTimeout(async () => {
-        await storage.updateTransaction(transactionId, {
-          status: 'pending',
-          retryCount: transaction.retryCount + 1,
-          lastRetry: new Date(),
-        });
-        
-        await storage.createActivityLog({
-          type: 'retry',
-          message: `Auto-retry attempt ${transaction.retryCount + 1} for transaction ${transactionId}`,
-          transactionId,
-          details: { retryCount: transaction.retryCount + 1, automatic: true },
-        });
-        
-        processTransaction(transactionId);
-      }, retryDelay);
+      const nextAttemptAt = new Date(Date.now() + retryDelay);
+
+      await storage.createRetryQueueEntry({
+        operation: 'processTransaction',
+        payload: { transactionId },
+        nextAttemptAt,
+        maxAttempts: 3
+      });
+
+      await storage.createActivityLog({
+        type: 'retry_queued',
+        message: `Enqueued retry for transaction ${transactionId}`,
+        transactionId,
+        details: { transactionId, nextAttemptAt }
+      });
+    } catch (qErr) {
+      console.error('[Retry] Failed to enqueue retry:', qErr);
     }
   }
 }
@@ -1750,15 +1783,15 @@ export function registerSmsWebhook(app: Express) {
       
       // Find related appointment by phone number
       const appointments = await storage.getAppointmentsByPhone(phoneNumber);
-      const activeAppointment = appointments.find(apt => 
+      const activeAppointment = appointments.find((apt: any) =>
         apt.status === 'scheduled' || apt.status === 'rescheduling'
       );
 
       // Process the SMS message
-      const smsProcessor = await import('./services/sms-processor');
+      const smsProcessor = await import('./services/sms-processor.js');
       const rescheduleRequest = await smsProcessor.smsProcessorService.processInboundSms(
-        phoneNumber, 
-        message, 
+        phoneNumber,
+        message,
         activeAppointment?.id
       );
 
@@ -1906,7 +1939,7 @@ export function registerSmsWebhook(app: Express) {
         return res.status(404).json({ error: 'Transaction not found' });
       }
 
-      const { calendarService } = await import('./services/calendar');
+      const { calendarService } = await import('./services/calendar.js');
       const calendarEvent = calendarService.createEventFromOmegaJob(
         {
           id: omegaJobId,
@@ -1957,9 +1990,9 @@ export function registerSmsWebhook(app: Express) {
       const appointments = await storage.getAppointments();
       
       const enrichedJobs = transactions
-        .filter(t => t.omegaJobId)
-        .map(transaction => {
-          const appointment = appointments.find(apt => apt.transactionId === transaction.id);
+        .filter((t: any) => t.omegaJobId)
+        .map((transaction: any) => {
+          const appointment = appointments.find((apt: any) => apt.transactionId === transaction.id);
           return {
             id: transaction.omegaJobId,
             transactionId: transaction.id,
@@ -1994,14 +2027,14 @@ export function registerSmsWebhook(app: Express) {
       
       // Find corresponding transaction
       const transactions = await storage.getTransactions();
-      const transaction = transactions.find(t => t.omegaJobId === jobId);
-      
+      const transaction = transactions.find((t: any) => t.omegaJobId === jobId);
+
       if (!transaction) {
         return res.status(404).json({ error: 'Job not found' });
       }
 
       const appointments = await storage.getAppointments();
-      const appointment = appointments.find(apt => apt.transactionId === transaction.id);
+      const appointment = appointments.find((apt: any) => apt.transactionId === transaction.id);
       
       const jobDetails = {
         id: jobId,
@@ -2047,13 +2080,13 @@ export function registerSmsWebhook(app: Express) {
       
       // Update local records
       const transactions = await storage.getTransactions();
-      const transaction = transactions.find(t => t.omegaJobId === jobId);
-      
+      const transaction = transactions.find((t: any) => t.omegaJobId === jobId);
+
       if (transaction) {
         // Update appointment if scheduling info changed
         if (updates.scheduledDate) {
           const appointments = await storage.getAppointments();
-          const appointment = appointments.find(apt => apt.transactionId === transaction.id);
+          const appointment = appointments.find((apt: any) => apt.transactionId === transaction.id);
           
           if (appointment) {
             await storage.updateAppointment(appointment.id, {
@@ -2124,9 +2157,9 @@ export function registerSmsWebhook(app: Express) {
         process.env.OMEGA_EDI_API_KEY || 'test-key'
       );
       
-      const omegaJobData = OmegaEDIService.createJobDataFromTransaction(transaction, mappedData);
+      const omegaJobData = OmegaEDIService.createJobDataFromTransaction(transaction as any, mappedData);
       const result = await omegaService.createJob(omegaJobData);
-      
+
       // Update transaction with Omega job ID
       await storage.updateTransaction(transaction.id, {
         status: 'success',
@@ -2151,46 +2184,24 @@ export function registerSmsWebhook(app: Express) {
     }
   });
 
-  // Get technicians/installers from Omega EDI
+  // Get technicians/installers from enrolled subcontractors
   app.get("/api/omega/technicians", async (req, res) => {
     try {
-      // This would fetch from actual Omega EDI API
-      // For now, return mock data that represents typical installer information
-      const technicians = [
-        {
-          id: 1,
-          name: 'Mike Johnson',
-          status: 'Available',
-          specialties: ['Windshield Replacement', 'Side Glass'],
-          currentJobs: 2,
-          weeklyCapacity: 25,
-          location: 'North Region',
-          phone: '(555) 100-0001',
-          email: 'mike.johnson@company.com'
-        },
-        {
-          id: 2,
-          name: 'David Wilson',
-          status: 'Busy',
-          specialties: ['Windshield Replacement', 'Rear Glass'],
-          currentJobs: 5,
-          weeklyCapacity: 30,
-          location: 'South Region',
-          phone: '(555) 100-0002',
-          email: 'david.wilson@company.com'
-        },
-        {
-          id: 3,
-          name: 'Tom Anderson',
-          status: 'Available',
-          specialties: ['All Glass Types', 'Commercial Vehicles'],
-          currentJobs: 1,
-          weeklyCapacity: 20,
-          location: 'East Region',
-          phone: '(555) 100-0003',
-          email: 'tom.anderson@company.com'
-        }
-      ];
+      // Query real subcontractors from database
+      const subcontractors = await storage.getActiveSubcontractors();
+
+      // Transform subcontractors to technician format
+      const technicians = subcontractors.map((sub: any) => ({
+        id: sub.id,
+        name: sub.name,
+        status: sub.status === 'active' ? 'Available' : (sub.status === 'busy' ? 'Busy' : 'Offline'),
+        specialties: sub.specialties || [],
+        currentJobs: sub.currentJobs || 0,
+        weeklyCapacity: sub.maxJobsPerDay ? sub.maxJobsPerDay * 5 : 25,
+        location: sub.serviceAreas?.length > 0 ? `ZIP: ${sub.serviceAreas[0]}` : 'Unknown',
+        phone: sub.phone || '',
+        email: sub.email || ''
+      }));
 
       res.json(technicians);
     } catch (error) {
@@ -2202,18 +2213,27 @@ export function registerSmsWebhook(app: Express) {
   app.get("/api/omega/reports", async (req, res) => {
     try {
       const { type = 'overview', startDate, endDate } = req.query;
-      
+
       // Generate reports from local data and Omega EDI
       const transactions = await storage.getTransactions();
       const appointments = await storage.getAppointments();
-      
+      const subcontractors = await storage.getActiveSubcontractors();
+
+      // Build technician performance from real subcontractor data
+      const technicianPerformance = subcontractors.map((sub: any) => ({
+        name: sub.name,
+        jobsCompleted: sub.totalJobs || 0,
+        rating: sub.rating || 0,
+        efficiency: sub.totalJobs > 0 ? '95%' : 'N/A'
+      }));
+
       const reports = {
         overview: {
           totalJobs: transactions.length,
-          completedJobs: transactions.filter(t => t.status === 'success').length,
-          pendingJobs: transactions.filter(t => t.status === 'pending').length,
-          failedJobs: transactions.filter(t => t.status === 'failed').length,
-          scheduledAppointments: appointments.filter(apt => apt.status === 'scheduled').length,
+          completedJobs: transactions.filter((t: any) => t.status === 'success').length,
+          pendingJobs: transactions.filter((t: any) => t.status === 'pending').length,
+          failedJobs: transactions.filter((t: any) => t.status === 'failed').length,
+          scheduledAppointments: appointments.filter((apt: any) => apt.status === 'scheduled').length,
           avgProcessingTime: '2.3 hours',
           customerSatisfaction: '94%'
         },
@@ -2223,11 +2243,7 @@ export function registerSmsWebhook(app: Express) {
           growth: '+16.1%',
           avgJobValue: '$285'
         },
-        technician_performance: [
-          { name: 'Mike Johnson', jobsCompleted: 23, rating: 4.8, efficiency: '98%' },
-          { name: 'David Wilson', jobsCompleted: 31, rating: 4.9, efficiency: '96%' },
-          { name: 'Tom Anderson', jobsCompleted: 18, rating: 4.7, efficiency: '94%' }
-        ]
+        technician_performance: technicianPerformance
       };
 
       res.json(reports);
@@ -2353,9 +2369,9 @@ export function registerSmsWebhook(app: Express) {
         process.env.OMEGA_EDI_API_KEY || 'test-key'
       );
       
-      const omegaJobData = OmegaEDIService.createJobDataFromTransaction(transaction, mappedData);
+      const omegaJobData = OmegaEDIService.createJobDataFromTransaction(transaction as any, mappedData);
       const result = await omegaService.createJob(omegaJobData);
-      
+
       await storage.updateTransaction(transaction.id, {
         status: 'success',
         omegaJobId: result.id ? `QO-${result.id}` : `ENHANCED-${Date.now()}`,
@@ -2577,10 +2593,18 @@ export function registerSmsWebhook(app: Express) {
   app.get("/api/square/pricing/:serviceType", async (req, res) => {
     try {
       const { serviceType } = req.params;
-      
-      // Calculate pricing using Square service
-      const pricing = squareBookingsService.calculateServicePricing(serviceType);
-      
+
+      // Simple pricing lookup by service type
+      const pricingMap: Record<string, number> = {
+        'windshield-replacement': 350,
+        'side-window': 150,
+        'rear-window': 250,
+        'quarter-glass': 175,
+        'mobile-service': 50,
+      };
+
+      const pricing = pricingMap[serviceType] || 300;
+
       res.json({
         serviceType,
         basePrice: pricing,
@@ -2744,21 +2768,16 @@ export function registerSmsWebhook(app: Express) {
 
     } catch (error: any) {
       console.error('Square-Omega EDI integration error:', error);
-      
-      // Log the integration error if transaction exists
-      let transactionIdForLogging = null;
-      if (typeof transaction !== 'undefined') {
-        transactionIdForLogging = transaction.id;
-        await storage.createActivityLog({
-          type: 'integration_error',
-          message: `Square-Omega EDI integration failed: ${error?.message || 'Unknown error'}`,
-          transactionId: transaction.id,
-          details: {
-            error: error?.message || 'Unknown error',
-            stack: error?.stack,
-          },
-        });
-      }
+
+      // Log the integration error
+      await storage.createActivityLog({
+        type: 'integration_error',
+        message: `Square-Omega EDI integration failed: ${error?.message || 'Unknown error'}`,
+        details: {
+          error: error?.message || 'Unknown error',
+          stack: error?.stack,
+        },
+      });
 
       res.status(500).json({
         success: false,
@@ -2992,7 +3011,7 @@ export function registerSmsWebhook(app: Express) {
         policyNumber: policyNumber,
         status: 'agent_submitted',
         sourceType: 'agent',
-        tags: ['Agent'],
+        tags: ['Agent'] as any,
         formData: {
           submissionType: 'agent_portal',
           agentInfo: {

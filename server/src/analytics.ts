@@ -2,6 +2,9 @@ import { db } from './db.js';
 import { formSubmissions, formAnalytics, userSessions, pageViews } from '@shared/schema';
 import { sql, desc, eq, gte, lte, and, count } from 'drizzle-orm';
 
+// Helper to check if database is available
+const isDbAvailable = () => db !== null;
+
 export interface AnalyticsData {
   formSubmissions: FormSubmissionSummary[];
   conversionFunnel: ConversionStep[];
@@ -125,6 +128,7 @@ export class AnalyticsService {
   }
 
   private async getFormSubmissions(startDate: Date, endDate: Date): Promise<FormSubmissionSummary[]> {
+    if (!isDbAvailable() || !db) return [];
     try {
       const submissions = await db
         .select({
@@ -168,6 +172,7 @@ export class AnalyticsService {
   }
 
   private async getConversionFunnel(startDate: Date, endDate: Date): Promise<ConversionStep[]> {
+    if (!isDbAvailable() || !db) return [];
     try {
       const sessions = await db
         .select({ count: count() })
@@ -232,6 +237,7 @@ export class AnalyticsService {
   }
 
   private async getPopularLocations(startDate: Date, endDate: Date): Promise<LocationData[]> {
+    if (!isDbAvailable() || !db) return [];
     try {
       const locationCounts = await db
         .select({
@@ -263,6 +269,7 @@ export class AnalyticsService {
   }
 
   private async getServiceTypeBreakdown(startDate: Date, endDate: Date): Promise<ServiceTypeData[]> {
+    if (!isDbAvailable() || !db) return [];
     try {
       const serviceTypeCounts = await db
         .select({
@@ -295,6 +302,7 @@ export class AnalyticsService {
   }
 
   private async getTimeBasedTrends(startDate: Date, endDate: Date): Promise<TimeSeriesData[]> {
+    if (!isDbAvailable() || !db) return [];
     try {
       const trends = await db
         .select({
@@ -326,6 +334,7 @@ export class AnalyticsService {
   }
 
   private async getDeviceBreakdown(startDate: Date, endDate: Date): Promise<DeviceData[]> {
+    if (!isDbAvailable() || !db) return [];
     try {
       const deviceStats = await db
         .select({
@@ -354,6 +363,16 @@ export class AnalyticsService {
   }
 
   private async getKeyMetrics(startDate: Date, endDate: Date): Promise<KeyMetrics> {
+    if (!isDbAvailable() || !db) {
+      return {
+        totalSubmissions: 0,
+        conversionRate: 0,
+        avgCompletionTime: 0,
+        quoteSuccessRate: 0,
+        submissionGrowth: 0,
+        conversionGrowth: 0
+      };
+    }
     try {
       const [totalSubs, completedSubs, avgTime, quotedSubs] = await Promise.all([
         db.select({ count: count() }).from(formSubmissions)
@@ -433,6 +452,10 @@ export class AnalyticsService {
     ipAddress: string;
     completionTime: number;
   }) {
+    if (!isDbAvailable() || !db) {
+      console.log('[Analytics] Database not available, skipping form submission tracking');
+      return;
+    }
     try {
       await db.insert(formSubmissions).values({
         sessionId: data.sessionId,
@@ -466,6 +489,10 @@ export class AnalyticsService {
     userAgent: string;
     ipAddress: string;
   }) {
+    if (!isDbAvailable() || !db) {
+      console.log('[Analytics] Database not available, skipping session tracking');
+      return;
+    }
     try {
       await db.insert(userSessions).values({
         sessionId: data.sessionId,
@@ -489,6 +516,10 @@ export class AnalyticsService {
     sessionId: string;
     eventType: 'form_start' | 'form_complete' | 'form_abandon';
   }) {
+    if (!isDbAvailable() || !db) {
+      console.log('[Analytics] Database not available, skipping event tracking');
+      return;
+    }
     try {
       // Update session record
       await db.update(userSessions)

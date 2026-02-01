@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   ComposableMap,
   Geographies,
@@ -23,7 +24,20 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { TechnicianMessagePanel } from './technician-message-panel';
-import { statesData, TechnicianInfo, CityData, StateData } from '@/data/technicians-by-state';
+import { statesData as staticStatesData, TechnicianInfo, CityData, StateData } from '@/data/technicians-by-state';
+
+// API response type for coverage stats
+interface CoverageStatsResponse {
+  success: boolean;
+  data: Array<{
+    state: string;
+    technicians: number;
+    available: number;
+    cities: number;
+  }>;
+  totalTechnicians: number;
+  totalAvailable: number;
+}
 
 // US Atlas TopoJSON URL
 const geoUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
@@ -57,9 +71,10 @@ const unavailableColor = { fill: '#f3f4f6', hover: '#e5e7eb', stroke: '#374151' 
 interface HDCoverageMapProps {
   className?: string;
   showSummaryCards?: boolean;
+  showMessaging?: boolean;
 }
 
-export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverageMapProps) {
+export function HDCoverageMap({ className, showSummaryCards = false, showMessaging = true }: HDCoverageMapProps) {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<CityData | null>(null);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
@@ -69,6 +84,28 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
   });
   const [tooltipContent, setTooltipContent] = useState<{ x: number; y: number; state: string } | null>(null);
   const [messagingTechnician, setMessagingTechnician] = useState<(TechnicianInfo & { city: string }) | null>(null);
+
+  // Fetch real technician counts from API
+  const { data: coverageStats } = useQuery<CoverageStatsResponse>({
+    queryKey: ['/api/technicians/coverage-stats'],
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  // Create merged statesData with real technician counts from API
+  const statesData = useMemo(() => {
+    const merged: Record<string, StateData> = {};
+    for (const [abbr, staticData] of Object.entries(staticStatesData)) {
+      const apiData = coverageStats?.data?.find(s => s.state === abbr);
+      merged[abbr] = {
+        ...staticData,
+        stats: {
+          ...staticData.stats,
+          technicians: apiData?.technicians ?? staticData.stats.technicians,
+        }
+      };
+    }
+    return merged;
+  }, [coverageStats]);
 
   // Calculate totals
   const totalStats = useMemo(() => {
@@ -81,7 +118,7 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
       }),
       { states: 0, cities: 0, technicians: 0, zipCodes: 0 }
     );
-  }, []);
+  }, [statesData]);
 
   // Aggregate all technicians from all cities in the selected state
   const allStateTechnicians = useMemo(() => {
@@ -104,7 +141,7 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
     // Sort by status: available first, then busy, then offline
     const statusOrder = { available: 0, busy: 1, offline: 2 };
     return techList.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
-  }, [selectedState]);
+  }, [selectedState, statesData]);
 
   const handleStateClick = useCallback((abbr: string) => {
     const stateData = statesData[abbr];
@@ -199,7 +236,7 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
         {/* Map Container */}
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Map */}
-          <div className="relative flex-1 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden" style={{ minHeight: '400px' }}>
+          <div className="relative flex-1 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden" style={{ minHeight: '400px' }}>
             <ComposableMap
               projection="geoAlbersUsa"
               projectionConfig={{
@@ -434,20 +471,22 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
                                 {tech.status.charAt(0).toUpperCase() + tech.status.slice(1)}
                               </Badge>
                             </div>
-                            <div className="flex gap-2 mt-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 h-7 text-xs border-green-500 text-green-600 hover:bg-green-50"
-                                onClick={() => handleMessageTechnician({ ...tech, city: selectedCity.name })}
-                              >
-                                <MessageSquare className="w-3 h-3 mr-1" />
-                                Message
-                              </Button>
-                              <Button variant="outline" size="sm" className="h-7 w-7 p-0">
-                                <Phone className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            {showMessaging && (
+                              <div className="flex gap-2 mt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 h-7 text-xs border-green-500 text-green-600 hover:bg-green-50"
+                                  onClick={() => handleMessageTechnician({ ...tech, city: selectedCity.name })}
+                                >
+                                  <MessageSquare className="w-3 h-3 mr-1" />
+                                  Message
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-7 w-7 p-0">
+                                  <Phone className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -529,20 +568,22 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
                                 {tech.specialty} • {tech.city}
                               </div>
                             </div>
-                            <div className="flex gap-1 ml-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-xs border-green-500 text-green-600 hover:bg-green-50"
-                                onClick={() => handleMessageTechnician(tech)}
-                              >
-                                <MessageSquare className="w-3 h-3 mr-1" />
-                                Message
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                <Phone className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            {showMessaging && (
+                              <div className="flex gap-1 ml-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs border-green-500 text-green-600 hover:bg-green-50"
+                                  onClick={() => handleMessageTechnician(tech)}
+                                >
+                                  <MessageSquare className="w-3 h-3 mr-1" />
+                                  Message
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <Phone className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -572,7 +613,7 @@ export function HDCoverageMap({ className, showSummaryCards = false }: HDCoverag
       </CardContent>
 
       {/* Technician Messaging Panel */}
-      {messagingTechnician && (
+      {showMessaging && messagingTechnician && (
         <TechnicianMessagePanel
           technician={messagingTechnician}
           onClose={() => setMessagingTechnician(null)}

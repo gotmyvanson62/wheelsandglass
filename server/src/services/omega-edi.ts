@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { InsertTransaction } from '@shared/schema';
-import { calendarService } from './calendar';
+import { calendarService } from './calendar.js';
 import { NotificationService } from '../notification-service.js';
 
 export interface OmegaEDIJobData {
@@ -227,27 +227,41 @@ export class OmegaEDIService {
    */
   async updateJobSchedule(jobId: string, newDateTime: Date): Promise<OmegaEDIResponse> {
     try {
-      // This would call Omega EDI's update endpoint
-      // For now, simulate the update
       console.log('📅 Updating Omega EDI job schedule:', {
         jobId,
         newDateTime: newDateTime.toISOString()
       });
 
-      // TODO: Implement actual Omega EDI update call
-      // const response = await axios.patch(
-      //   `${this.baseUrl}Invoices/${jobId}`,
-      //   { scheduled_datetime: newDateTime.toISOString() },
-      //   {
-      //     headers: {
-      //       'api_key': this.apiKey,
-      //       'Content-Type': 'application/json',
-      //     }
-      //   }
-      // );
+      // Call Omega EDI's update endpoint
+      const response = await axios.patch(
+        `${this.baseUrl}Invoices/${jobId}`,
+        { scheduled_datetime: newDateTime.toISOString() },
+        {
+          headers: {
+            'api_key': this.apiKey,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000,
+        }
+      );
 
+      console.log('✅ Omega EDI schedule updated:', response.data);
       return { id: parseInt(jobId), message: 'Schedule updated successfully' };
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.message;
+        console.error(`❌ Omega EDI schedule update failed (${status}):`, message);
+
+        // Notify on failure
+        await NotificationService.notifyOmegaEdiFailure({
+          endpoint: `${this.baseUrl}Invoices/${jobId}`,
+          error: `${status}: ${message}`,
+          context: { jobId, newDateTime: newDateTime.toISOString() }
+        });
+
+        throw new Error(`Omega EDI schedule update failed (${status}): ${message}`);
+      }
       console.error('❌ Omega EDI schedule update failed:', error);
       throw error;
     }
@@ -258,32 +272,48 @@ export class OmegaEDIService {
    */
   async getInstallerAvailability(installerId?: string, date?: Date): Promise<any> {
     try {
-      // This would call Omega EDI's availability endpoint
       console.log('🔍 Checking installer availability:', {
         installerId: installerId || 'all',
         date: date?.toISOString() || 'next 7 days'
       });
 
-      // TODO: Implement actual Omega EDI availability call
-      // const response = await axios.get(
-      //   `${this.baseUrl}Installers/availability`,
-      //   {
-      //     headers: { 'api_key': this.apiKey },
-      //     params: {
-      //       installer_id: installerId,
-      //       date: date?.toISOString().split('T')[0]
-      //     }
-      //   }
-      // );
+      // Build query params
+      const params: Record<string, string> = {};
+      if (installerId) params.installer_id = installerId;
+      if (date) params.date = date.toISOString().split('T')[0];
 
-      // Mock availability response
-      return {
-        availability: [
-          { date: new Date().toISOString().split('T')[0], slots: ['09:00', '14:00'] },
-          { date: new Date(Date.now() + 86400000).toISOString().split('T')[0], slots: ['10:00', '15:00'] }
-        ]
-      };
+      // Call Omega EDI's availability endpoint
+      const response = await axios.get(
+        `${this.baseUrl}Installers/availability`,
+        {
+          headers: { 'api_key': this.apiKey },
+          params,
+          timeout: 15000,
+        }
+      );
+
+      console.log('✅ Omega EDI availability retrieved:', response.data);
+      return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.message;
+        console.error(`❌ Installer availability check failed (${status}):`, message);
+
+        // Return fallback mock data if API unavailable (graceful degradation)
+        if (status === 404 || status === 503) {
+          console.warn('⚠️ Using fallback availability data');
+          return {
+            availability: [
+              { date: new Date().toISOString().split('T')[0], slots: ['09:00', '14:00'] },
+              { date: new Date(Date.now() + 86400000).toISOString().split('T')[0], slots: ['10:00', '15:00'] }
+            ],
+            fallback: true
+          };
+        }
+
+        throw new Error(`Omega EDI availability check failed (${status}): ${message}`);
+      }
       console.error('❌ Installer availability check failed:', error);
       throw error;
     }

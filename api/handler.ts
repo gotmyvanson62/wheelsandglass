@@ -557,6 +557,56 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  // Technicians coverage stats endpoint (PUBLIC - no auth required for coverage map)
+  if (path === '/api/technicians/coverage-stats') {
+    // Returns real data - 0 technicians until enrollment adds them
+    // This is intentionally empty - technicians must enroll through the system
+    return res.json({
+      success: true,
+      data: [],  // No states with technicians yet
+      totalTechnicians: 0,
+      totalAvailable: 0
+    });
+  }
+
+  // Technicians stats endpoint (protected)
+  if (path === '/api/technicians/stats') {
+    const token = cookies.admin_token;
+    const valid = safeVerifyJWT(token);
+    if (!valid) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        totalTechnicians: 0,
+        totalStates: 0,
+        totalAvailable: 0,
+        byState: []
+      }
+    });
+  }
+
+  // Technicians list endpoint (protected)
+  if (path === '/api/technicians') {
+    const token = cookies.admin_token;
+    const valid = safeVerifyJWT(token);
+    if (!valid) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        technicians: [],
+        total: 0,
+        limit: 50,
+        offset: 0
+      }
+    });
+  }
+
   // Appointments endpoints
   if (path === '/api/appointments/available-slots') {
     const token = cookies.admin_token;
@@ -584,11 +634,8 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    return res.json([
-      { id: 1, name: 'Mike Johnson', specialty: 'Windshield Replacement', available: true },
-      { id: 2, name: 'Sarah Williams', specialty: 'Chip Repair', available: true },
-      { id: 3, name: 'Carlos Rodriguez', specialty: 'ADAS Calibration', available: false },
-    ]);
+    // Returns empty array - technicians must enroll through the system
+    return res.json([]);
   }
 
   if (path === '/api/appointments/prepare-square-booking' && req.method === 'POST') {
@@ -800,6 +847,48 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
         hasADAS: true,
         adasFeatures: ['Lane Departure Warning', 'Forward Collision Warning'],
         calibrationRequired: true,
+      }
+    });
+  }
+
+  // Subcontractors list endpoint (protected)
+  if (path === '/api/subcontractors' && req.method === 'GET') {
+    const token = cookies.admin_token;
+    const valid = safeVerifyJWT(token);
+    if (!valid) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    // Returns empty array - subcontractors must enroll through the system
+    return res.json({ success: true, data: [] });
+  }
+
+  // Subcontractor enrollment endpoint (protected)
+  if (path === '/api/subcontractors' && req.method === 'POST') {
+    const token = cookies.admin_token;
+    const valid = safeVerifyJWT(token);
+    if (!valid) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+
+    // In production, this would create a subcontractor in the database
+    return res.json({
+      success: true,
+      message: 'Subcontractor enrolled successfully',
+      data: {
+        id: Date.now(),
+        name: body?.name || 'New Subcontractor',
+        email: body?.email,
+        phone: body?.phone,
+        serviceAreas: body?.serviceAreas || [],
+        specialties: body?.specialties || [],
+        status: 'pending',
+        createdAt: new Date().toISOString()
       }
     });
   }

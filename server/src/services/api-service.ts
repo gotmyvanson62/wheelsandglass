@@ -16,7 +16,7 @@ export class ApiService {
       minTimeout: 1000,
       maxTimeout: 5000,
       factor: 2,
-      onFailedAttempt: (error) => {
+      onFailedAttempt: (error: any) => {
         console.log(`[ApiService] Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`);
       }
     });

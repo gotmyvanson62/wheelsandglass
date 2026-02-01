@@ -36,7 +36,7 @@ export class VinLookupService {
         bodyType: cached.bodyType || undefined,
         engine: cached.engine || undefined,
         trim: cached.trim || undefined,
-        isValid: cached.isValid,
+        isValid: cached.isValid ?? false,
         source: cached.lookupSource as any || 'omega_edi'
       };
     }
@@ -143,7 +143,7 @@ export class VinLookupService {
 
   private async getCachedVinData(vin: string): Promise<VehicleLookup | null> {
     try {
-      return await storage.getVehicleLookup(vin);
+      return await storage.getVehicleLookup(vin) ?? null;
     } catch (error) {
       return null;
     }
@@ -182,6 +182,55 @@ export class VinLookupService {
     // VIN should be 17 characters, alphanumeric, no I, O, or Q
     const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/;
     return vinRegex.test(vin.toUpperCase());
+  }
+
+  // Validate VIN checksum (9th position check digit)
+  // Uses the standard NAV algorithm with weighted positions
+  static isValidVinChecksum(vin: string): boolean {
+    if (!this.isValidVinFormat(vin)) return false;
+
+    const upperVin = vin.toUpperCase();
+
+    // Transliteration values for letters
+    const transliteration: { [key: string]: number } = {
+      'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8,
+      'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5, 'P': 7, 'R': 9,
+      'S': 2, 'T': 3, 'U': 4, 'V': 5, 'W': 6, 'X': 7, 'Y': 8, 'Z': 9,
+      '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9
+    };
+
+    // Position weights (positions 1-17)
+    const weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+
+    let sum = 0;
+    for (let i = 0; i < 17; i++) {
+      const char = upperVin.charAt(i);
+      const value = transliteration[char];
+      if (value === undefined) return false;
+      sum += value * weights[i];
+    }
+
+    const remainder = sum % 11;
+    const checkDigit = remainder === 10 ? 'X' : remainder.toString();
+
+    return upperVin.charAt(8) === checkDigit;
+  }
+
+  // Combined validation: format + checksum
+  static isValidVin(vin: string): { valid: boolean; reason?: string } {
+    if (!vin || vin.length !== 17) {
+      return { valid: false, reason: 'VIN must be exactly 17 characters' };
+    }
+
+    if (!this.isValidVinFormat(vin)) {
+      return { valid: false, reason: 'VIN contains invalid characters (I, O, Q not allowed)' };
+    }
+
+    if (!this.isValidVinChecksum(vin)) {
+      return { valid: false, reason: 'VIN checksum is invalid' };
+    }
+
+    return { valid: true };
   }
 
   // Extract year from VIN (10th character)

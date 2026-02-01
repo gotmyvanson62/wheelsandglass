@@ -170,7 +170,7 @@ export function TechnicianMessagePanel({ technician, onClose }: TechnicianMessag
   return (
     <div className="fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-800 shadow-xl border-l border-gray-200 dark:border-gray-700 flex flex-col z-50 animate-in slide-in-from-right duration-200">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3">
             <div className="relative">
@@ -227,7 +227,7 @@ export function TechnicianMessagePanel({ technician, onClose }: TechnicianMessag
       </div>
 
       {/* Input */}
-      <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex gap-2">
           <Input
             value={messageInput}

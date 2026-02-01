@@ -4,6 +4,7 @@
  */
 
 import { InsertSmsInteraction, InsertAppointment } from '@shared/schema';
+import { OmegaEDIService } from './omega-edi.js';
 
 export interface RescheduleRequest {
   originalAppointmentId: number;
@@ -288,18 +289,26 @@ export class SmsProcessorService {
    */
   async updateOmegaAppointment(omegaJobId: string, newDateTime: Date): Promise<boolean> {
     try {
-      // This would make an API call to Omega EDI to update the appointment
-      // For now, log the update
       console.log('📅 Omega EDI Update:', {
         jobId: omegaJobId,
         newDateTime: newDateTime.toISOString(),
         action: 'reschedule'
       });
 
-      // TODO: Implement actual Omega EDI API call
-      // const response = await omegaEdiService.updateJobSchedule(omegaJobId, newDateTime);
-      // return response.success;
+      // Get Omega EDI config from environment
+      const omegaApiUrl = process.env.OMEGA_API_URL;
+      const omegaApiKey = process.env.OMEGA_API_KEY;
 
+      if (!omegaApiUrl || !omegaApiKey) {
+        console.warn('⚠️ Omega EDI not configured - skipping API call');
+        return true; // Return true to not block the flow when not configured
+      }
+
+      // Call the actual Omega EDI API
+      const omegaService = new OmegaEDIService(omegaApiUrl, omegaApiKey);
+      const response = await omegaService.updateJobSchedule(omegaJobId, newDateTime);
+
+      console.log('✅ Omega EDI appointment updated:', response);
       return true;
     } catch (error) {
       console.error('❌ Omega EDI update failed:', error);

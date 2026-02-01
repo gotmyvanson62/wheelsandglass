@@ -250,11 +250,40 @@ export function QuoteForm({ isOpen, onClose, inline = false, division }: QuoteFo
       division: effectiveDivision,
       selectedWindows: isWheelsDivision ? [] : selectedWindows,
       selectedWheels: isWheelsDivision ? selectedWheels : [],
-      uploadedFiles: uploadedFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
+      // Files will be sent separately via FormData when present
+      uploadedFiles: []
     };
 
     try {
-      const response = await apiClient.post('/api/quote/submit', submitData);
+      let response;
+
+      // Use FormData endpoint when files are present for actual file upload
+      if (uploadedFiles.length > 0) {
+        const formDataPayload = new FormData();
+        formDataPayload.append('data', JSON.stringify(submitData));
+
+        // Append each file
+        uploadedFiles.forEach(file => {
+          formDataPayload.append('files', file);
+        });
+
+        // Use fetch directly for FormData (axios needs special config)
+        const fetchResponse = await fetch('/api/quote/submit-with-files', {
+          method: 'POST',
+          body: formDataPayload,
+          credentials: 'include'
+        });
+
+        if (!fetchResponse.ok) {
+          const errorData = await fetchResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Failed to submit quote');
+        }
+
+        response = { data: await fetchResponse.json() };
+      } else {
+        // No files - use standard JSON endpoint
+        response = await apiClient.post('/api/quote/submit', submitData);
+      }
 
       // [FORM] Log successful submission
       console.log('[FORM] Success:', {

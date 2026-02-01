@@ -270,7 +270,7 @@ export function CustomerProfileDialog({ customerId, open, onOpenChange }: Custom
                               </div>
                             </div>
                             {quote.notes && (
-                              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
+                              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
                                 {quote.notes}
                               </div>
                             )}

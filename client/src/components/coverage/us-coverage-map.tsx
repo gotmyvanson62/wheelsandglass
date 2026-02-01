@@ -1,9 +1,23 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MapPin, Users, Building, ArrowLeft, X } from 'lucide-react';
+
+// API response type for coverage stats
+interface CoverageStatsResponse {
+  success: boolean;
+  data: Array<{
+    state: string;
+    technicians: number;
+    available: number;
+    cities: number;
+  }>;
+  totalTechnicians: number;
+  totalAvailable: number;
+}
 
 interface StateData {
   name: string;
@@ -15,27 +29,28 @@ interface StateData {
   topCities: string[];
 }
 
-const statesData: Record<string, StateData> = {
-  CA: { name: 'California', abbr: 'CA', cities: 28, technicians: 245, zipCodes: 4200, coverage: 'full', topCities: ['Los Angeles', 'San Diego', 'San Francisco', 'San Jose', 'Sacramento'] },
-  TX: { name: 'Texas', abbr: 'TX', cities: 22, technicians: 198, zipCodes: 3800, coverage: 'full', topCities: ['Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth'] },
-  FL: { name: 'Florida', abbr: 'FL', cities: 18, technicians: 156, zipCodes: 2900, coverage: 'full', topCities: ['Miami', 'Orlando', 'Tampa', 'Jacksonville', 'Fort Lauderdale'] },
-  AZ: { name: 'Arizona', abbr: 'AZ', cities: 12, technicians: 89, zipCodes: 1200, coverage: 'full', topCities: ['Phoenix', 'Tucson', 'Mesa', 'Scottsdale', 'Tempe'] },
-  NV: { name: 'Nevada', abbr: 'NV', cities: 6, technicians: 42, zipCodes: 480, coverage: 'partial', topCities: ['Las Vegas', 'Reno', 'Henderson', 'North Las Vegas'] },
-  CO: { name: 'Colorado', abbr: 'CO', cities: 8, technicians: 67, zipCodes: 720, coverage: 'partial', topCities: ['Denver', 'Colorado Springs', 'Aurora', 'Boulder'] },
-  WA: { name: 'Washington', abbr: 'WA', cities: 10, technicians: 78, zipCodes: 890, coverage: 'partial', topCities: ['Seattle', 'Tacoma', 'Spokane', 'Bellevue'] },
-  OR: { name: 'Oregon', abbr: 'OR', cities: 7, technicians: 52, zipCodes: 620, coverage: 'partial', topCities: ['Portland', 'Eugene', 'Salem', 'Bend'] },
-  NY: { name: 'New York', abbr: 'NY', cities: 14, technicians: 112, zipCodes: 1800, coverage: 'partial', topCities: ['New York City', 'Buffalo', 'Rochester', 'Albany'] },
-  IL: { name: 'Illinois', abbr: 'IL', cities: 9, technicians: 76, zipCodes: 980, coverage: 'partial', topCities: ['Chicago', 'Aurora', 'Naperville', 'Springfield'] },
-  GA: { name: 'Georgia', abbr: 'GA', cities: 8, technicians: 64, zipCodes: 780, coverage: 'partial', topCities: ['Atlanta', 'Savannah', 'Augusta', 'Columbus'] },
-  NC: { name: 'North Carolina', abbr: 'NC', cities: 7, technicians: 58, zipCodes: 720, coverage: 'partial', topCities: ['Charlotte', 'Raleigh', 'Durham', 'Greensboro'] },
-  PA: { name: 'Pennsylvania', abbr: 'PA', cities: 8, technicians: 62, zipCodes: 840, coverage: 'limited', topCities: ['Philadelphia', 'Pittsburgh', 'Allentown'] },
-  OH: { name: 'Ohio', abbr: 'OH', cities: 7, technicians: 54, zipCodes: 680, coverage: 'limited', topCities: ['Columbus', 'Cleveland', 'Cincinnati'] },
-  MI: { name: 'Michigan', abbr: 'MI', cities: 6, technicians: 48, zipCodes: 620, coverage: 'limited', topCities: ['Detroit', 'Grand Rapids', 'Ann Arbor'] },
-  NJ: { name: 'New Jersey', abbr: 'NJ', cities: 5, technicians: 42, zipCodes: 480, coverage: 'limited', topCities: ['Newark', 'Jersey City', 'Trenton'] },
-  VA: { name: 'Virginia', abbr: 'VA', cities: 6, technicians: 46, zipCodes: 540, coverage: 'limited', topCities: ['Virginia Beach', 'Richmond', 'Norfolk'] },
-  MA: { name: 'Massachusetts', abbr: 'MA', cities: 5, technicians: 38, zipCodes: 420, coverage: 'limited', topCities: ['Boston', 'Worcester', 'Cambridge'] },
-  TN: { name: 'Tennessee', abbr: 'TN', cities: 5, technicians: 36, zipCodes: 380, coverage: 'limited', topCities: ['Nashville', 'Memphis', 'Knoxville'] },
-  MO: { name: 'Missouri', abbr: 'MO', cities: 4, technicians: 32, zipCodes: 340, coverage: 'limited', topCities: ['Kansas City', 'St. Louis', 'Springfield'] },
+// Static geographic data (technician counts loaded from API)
+const staticStatesData: Record<string, StateData> = {
+  CA: { name: 'California', abbr: 'CA', cities: 28, technicians: 0, zipCodes: 4200, coverage: 'full', topCities: ['Los Angeles', 'San Diego', 'San Francisco', 'San Jose', 'Sacramento'] },
+  TX: { name: 'Texas', abbr: 'TX', cities: 22, technicians: 0, zipCodes: 3800, coverage: 'full', topCities: ['Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth'] },
+  FL: { name: 'Florida', abbr: 'FL', cities: 18, technicians: 0, zipCodes: 2900, coverage: 'full', topCities: ['Miami', 'Orlando', 'Tampa', 'Jacksonville', 'Fort Lauderdale'] },
+  AZ: { name: 'Arizona', abbr: 'AZ', cities: 12, technicians: 0, zipCodes: 1200, coverage: 'full', topCities: ['Phoenix', 'Tucson', 'Mesa', 'Scottsdale', 'Tempe'] },
+  NV: { name: 'Nevada', abbr: 'NV', cities: 6, technicians: 0, zipCodes: 480, coverage: 'partial', topCities: ['Las Vegas', 'Reno', 'Henderson', 'North Las Vegas'] },
+  CO: { name: 'Colorado', abbr: 'CO', cities: 8, technicians: 0, zipCodes: 720, coverage: 'partial', topCities: ['Denver', 'Colorado Springs', 'Aurora', 'Boulder'] },
+  WA: { name: 'Washington', abbr: 'WA', cities: 10, technicians: 0, zipCodes: 890, coverage: 'partial', topCities: ['Seattle', 'Tacoma', 'Spokane', 'Bellevue'] },
+  OR: { name: 'Oregon', abbr: 'OR', cities: 7, technicians: 0, zipCodes: 620, coverage: 'partial', topCities: ['Portland', 'Eugene', 'Salem', 'Bend'] },
+  NY: { name: 'New York', abbr: 'NY', cities: 14, technicians: 0, zipCodes: 1800, coverage: 'partial', topCities: ['New York City', 'Buffalo', 'Rochester', 'Albany'] },
+  IL: { name: 'Illinois', abbr: 'IL', cities: 9, technicians: 0, zipCodes: 980, coverage: 'partial', topCities: ['Chicago', 'Aurora', 'Naperville', 'Springfield'] },
+  GA: { name: 'Georgia', abbr: 'GA', cities: 8, technicians: 0, zipCodes: 780, coverage: 'partial', topCities: ['Atlanta', 'Savannah', 'Augusta', 'Columbus'] },
+  NC: { name: 'North Carolina', abbr: 'NC', cities: 7, technicians: 0, zipCodes: 720, coverage: 'partial', topCities: ['Charlotte', 'Raleigh', 'Durham', 'Greensboro'] },
+  PA: { name: 'Pennsylvania', abbr: 'PA', cities: 8, technicians: 0, zipCodes: 840, coverage: 'limited', topCities: ['Philadelphia', 'Pittsburgh', 'Allentown'] },
+  OH: { name: 'Ohio', abbr: 'OH', cities: 7, technicians: 0, zipCodes: 680, coverage: 'limited', topCities: ['Columbus', 'Cleveland', 'Cincinnati'] },
+  MI: { name: 'Michigan', abbr: 'MI', cities: 6, technicians: 0, zipCodes: 620, coverage: 'limited', topCities: ['Detroit', 'Grand Rapids', 'Ann Arbor'] },
+  NJ: { name: 'New Jersey', abbr: 'NJ', cities: 5, technicians: 0, zipCodes: 480, coverage: 'limited', topCities: ['Newark', 'Jersey City', 'Trenton'] },
+  VA: { name: 'Virginia', abbr: 'VA', cities: 6, technicians: 0, zipCodes: 540, coverage: 'limited', topCities: ['Virginia Beach', 'Richmond', 'Norfolk'] },
+  MA: { name: 'Massachusetts', abbr: 'MA', cities: 5, technicians: 0, zipCodes: 420, coverage: 'limited', topCities: ['Boston', 'Worcester', 'Cambridge'] },
+  TN: { name: 'Tennessee', abbr: 'TN', cities: 5, technicians: 0, zipCodes: 380, coverage: 'limited', topCities: ['Nashville', 'Memphis', 'Knoxville'] },
+  MO: { name: 'Missouri', abbr: 'MO', cities: 4, technicians: 0, zipCodes: 340, coverage: 'limited', topCities: ['Kansas City', 'St. Louis', 'Springfield'] },
 };
 
 // Simplified US Map SVG paths for each state
@@ -94,6 +109,29 @@ export function USCoverageMap() {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Fetch real technician counts from API
+  const { data: coverageStats } = useQuery<CoverageStatsResponse>({
+    queryKey: ['/api/technicians/coverage-stats'],
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  // Helper to get state data merged with API counts
+  const getStateData = (abbr: string): StateData => {
+    const staticData = staticStatesData[abbr];
+    if (!staticData) return staticData;
+
+    const apiData = coverageStats?.data?.find(s => s.state === abbr);
+    return {
+      ...staticData,
+      technicians: apiData?.technicians ?? 0,
+    };
+  };
+
+  // Create merged statesData object for compatibility
+  const statesData = Object.fromEntries(
+    Object.keys(staticStatesData).map(abbr => [abbr, getStateData(abbr)])
+  );
 
   const getCoverageColor = (coverage: StateData['coverage'], isHovered: boolean, isSelected: boolean) => {
     const base = {

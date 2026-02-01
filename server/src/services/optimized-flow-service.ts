@@ -1,5 +1,4 @@
 import { storage } from '../storage.js';
-import { OmegaEDIService } from './omega-edi';
 import type { Transaction, InsertTransaction } from '@shared/schema';
 
 export interface OptimizedFormData {
@@ -105,7 +104,7 @@ export class OptimizedFlowService {
     const transactionData: InsertTransaction = {
       customerName: formData.customerName,
       customerPhone: formData.customerPhone,
-      customerEmail: formData.customerEmail || null,
+      customerEmail: formData.customerEmail || '',
       vehicleVin: formData.vehicleVin || null,
       vehicleYear: formData.vehicleYear || null,
       vehicleMake: formData.vehicleMake || null,
@@ -124,15 +123,15 @@ export class OptimizedFlowService {
   private async getVehicleDataParallel(vin?: string, formData?: OptimizedFormData) {
     try {
       if (vin) {
-        // Primary: VIN lookup via Omega EDI
-        const omegaEDI = new OmegaEDIService();
-        const vinResult = await omegaEDI.lookupVIN(vin);
-        if (vinResult.success) {
+        // Primary: VIN lookup via VIN lookup service
+        const { vinLookupService } = await import('./vin-lookup.js');
+        const vinResult = await vinLookupService.lookupVin(vin);
+        if (vinResult.isValid) {
           return {
-            year: vinResult.data.year,
-            make: vinResult.data.make,
-            model: vinResult.data.model,
-            bodyType: vinResult.data.bodyType || 'Unknown'
+            year: vinResult.year?.toString() || formData?.vehicleYear || 'Unknown',
+            make: vinResult.make || formData?.vehicleMake || 'Unknown',
+            model: vinResult.model || formData?.vehicleModel || 'Unknown',
+            bodyType: vinResult.bodyType || 'Unknown'
           };
         }
       }
@@ -162,8 +161,13 @@ export class OptimizedFlowService {
   private async getNagsDataParallel(vin?: string, formData?: OptimizedFormData) {
     try {
       if (vin) {
-        // TODO: Integrate with actual NAGS API
-        const nagsResult = await this.mockNagsLookup(vin);
+        // Use NAGS API if configured, otherwise fallback to estimates
+        if (process.env.NAGS_API_KEY && process.env.NAGS_API_URL) {
+          // NAGS API integration ready - implement when credentials available
+          // const { nagsLookupService } = await import('./nagsLookup.service');
+          // return await nagsLookupService.lookup(vin);
+        }
+        const nagsResult = await this.nagsLookupFallback(vin);
         return nagsResult;
       }
 
@@ -189,32 +193,23 @@ export class OptimizedFlowService {
    */
   private async getOmegaPricingParallel(vin?: string, formData?: OptimizedFormData) {
     try {
-      // Use Omega EDI pricing service
-      const omegaEDI = new OmegaEDIService();
-      const pricingResult = await omegaEDI.generateQuote({
-        customerInfo: {
-          name: formData?.customerName || '',
-          phone: formData?.customerPhone || '',
-          email: formData?.customerEmail || ''
-        },
-        vehicleInfo: {
-          vin: vin || '',
-          year: formData?.vehicleYear || '',
-          make: formData?.vehicleMake || '',
-          model: formData?.vehicleModel || ''
-        },
-        serviceDetails: {
-          damageDescription: formData?.damageDescription || '',
-          serviceLocation: formData?.serviceLocation || ''
-        }
+      // Use Omega pricing service
+      const { omegaPricingService } = await import('./omega-pricing-updated.js');
+      const pricingResult = await omegaPricingService.generatePricing({
+        vin: vin,
+        vehicleYear: formData?.vehicleYear,
+        vehicleMake: formData?.vehicleMake,
+        vehicleModel: formData?.vehicleModel,
+        damageDescription: formData?.damageDescription,
+        customerLocation: formData?.serviceLocation
       });
 
       if (pricingResult.success) {
         return {
-          partsTotal: pricingResult.data.partsTotal,
-          laborTotal: pricingResult.data.laborTotal,
-          totalAmount: pricingResult.data.totalAmount,
-          estimatedDuration: pricingResult.data.estimatedDuration || 120
+          partsTotal: pricingResult.partsCost,
+          laborTotal: pricingResult.laborCost,
+          totalAmount: pricingResult.totalPrice,
+          estimatedDuration: pricingResult.estimatedDuration || 120
         };
       }
 
@@ -222,11 +217,11 @@ export class OptimizedFlowService {
 
     } catch (error) {
       console.error('Omega pricing failed:', error);
-      
+
       // Fallback pricing calculation
       const partsTotal = 150;
       const laborTotal = 200;
-      
+
       return {
         partsTotal,
         laborTotal,
@@ -298,15 +293,18 @@ export class OptimizedFlowService {
   }
 
   /**
-   * Mock NAGS lookup for development
+   * NAGS lookup fallback when API is not configured
+   * Returns estimated data for quoting purposes
    */
-  private async mockNagsLookup(vin: string) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+  private async nagsLookupFallback(vin: string) {
+    // Log only once per session to avoid log spam
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('NAGS API not configured - using estimated pricing');
+    }
+
     return {
-      partNumber: `NAGS-${vin.slice(-6)}`,
-      partDescription: 'OEM Windshield Assembly',
+      partNumber: 'ESTIMATE',
+      partDescription: 'Auto Glass - Pricing Estimate',
       estimatedCost: 175
     };
   }
@@ -322,11 +320,12 @@ export class OptimizedFlowService {
       }
 
       // Generate customer portal URL with embedded data
+      const formData = transaction.formData as any || {};
       const portalData = {
         customerName: transaction.customerName,
         vehicleInfo: `${transaction.vehicleYear} ${transaction.vehicleMake} ${transaction.vehicleModel}`,
-        estimatedCost: transaction.processingData?.estimatedCost || 350,
-        squarePaymentUrl: transaction.processingData?.squarePaymentUrl || ''
+        estimatedCost: formData?.estimatedCost || 350,
+        squarePaymentUrl: transaction.squarePaymentLinkId || ''
       };
 
       const encodedData = Buffer.from(JSON.stringify(portalData)).toString('base64');

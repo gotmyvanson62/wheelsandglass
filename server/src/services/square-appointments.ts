@@ -194,7 +194,7 @@ export class SquareBookingsService {
   /**
    * Send booking confirmation to customer
    */
-  async sendBookingConfirmation(appointmentData: SquareAppointmentData, appointmentId: string): Promise<boolean> {
+  async sendBookingConfirmation(appointmentData: SquareBookingData, appointmentId: string): Promise<boolean> {
     try {
       // In production, this would integrate with Square's notification system
       console.log(`Booking confirmation sent for appointment ${appointmentId}`);

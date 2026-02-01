@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Apply search filter
     if (search && typeof search === 'string') {
       const searchLower = search.toLowerCase();
-      customers = customers.filter(c =>
+      customers = customers.filter((c: any) =>
         c.firstName.toLowerCase().includes(searchLower) ||
         c.lastName.toLowerCase().includes(searchLower) ||
         c.primaryEmail.toLowerCase().includes(searchLower) ||
@@ -276,6 +276,40 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * DELETE /api/customers/:id
+ * Delete a customer
+ * SECURITY: Requires authentication
+ */
+router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid customer ID' });
+    }
+
+    const success = await storage.deleteCustomer(id);
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    await storage.createActivityLog({
+      type: 'customer_deleted',
+      message: `Customer ${id} deleted`,
+      details: { customerId: id }
+    });
+
+    res.json({ success: true, message: 'Customer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting customer:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete customer',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/customers/search/email/:email
  * Find customer by email
  */
@@ -340,23 +374,23 @@ router.get('/stats', async (req: Request, res: Response) => {
 
     const stats = {
       total: customers.length,
-      newLast24Hours: customers.filter(c =>
+      newLast24Hours: customers.filter((c: any) =>
         new Date(c.createdAt).getTime() > dayAgo
       ).length,
-      newLast7Days: customers.filter(c =>
+      newLast7Days: customers.filter((c: any) =>
         new Date(c.createdAt).getTime() > weekAgo
       ).length,
-      newLast30Days: customers.filter(c =>
+      newLast30Days: customers.filter((c: any) =>
         new Date(c.createdAt).getTime() > monthAgo
       ).length,
       byAccountType: {
-        individual: customers.filter(c => c.accountType === 'individual').length,
-        business: customers.filter(c => c.accountType === 'business').length,
-        fleet: customers.filter(c => c.accountType === 'fleet').length,
+        individual: customers.filter((c: any) => c.accountType === 'individual').length,
+        business: customers.filter((c: any) => c.accountType === 'business').length,
+        fleet: customers.filter((c: any) => c.accountType === 'fleet').length,
       },
-      totalRevenue: customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0),
+      totalRevenue: customers.reduce((sum: number, c: any) => sum + (c.totalSpent || 0), 0),
       averageJobsPerCustomer: customers.length > 0
-        ? customers.reduce((sum, c) => sum + (c.totalJobs || 0), 0) / customers.length
+        ? customers.reduce((sum: number, c: any) => sum + (c.totalJobs || 0), 0) / customers.length
         : 0,
     };
 

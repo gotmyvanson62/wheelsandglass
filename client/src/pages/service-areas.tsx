@@ -8,13 +8,13 @@ import {
   ArrowLeft,
   Car,
   Clock,
-  Star,
   Phone,
   CheckCircle,
   Navigation,
   Users
 } from 'lucide-react';
-import { CustomerCoverageMap } from '@/components/customer/customer-coverage-map';
+import { HDCoverageMap } from '@/components/coverage/hd-coverage-map';
+import { QuoteForm } from '@/components/quote-form';
 
 interface ServiceArea {
   city: string;
@@ -1305,6 +1305,7 @@ const stateServiceAreas = {
 export default function ServiceAreas() {
   const [location, setLocation] = useLocation();
   const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
 
   // Parse URL to get selected state
   const urlParts = location.split('/');
@@ -1332,8 +1333,8 @@ export default function ServiceAreas() {
       </div>
 
       {/* Interactive Coverage Map */}
-      <div className="max-w-4xl mx-auto">
-        <CustomerCoverageMap className="mb-6" />
+      <div className="max-w-6xl mx-auto">
+        <HDCoverageMap className="mb-6" showMessaging={false} />
       </div>
 
       {/* Coverage Summary */}
@@ -1447,11 +1448,9 @@ export default function ServiceAreas() {
                   <Clock className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-600">{area.driveTime}</span>
                 </div>
-                
-
 
                 <div className="pt-2 border-t">
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                     <div className="flex items-center gap-1">
                       <Car className="w-4 h-4" />
                       Mobile Service
@@ -1461,6 +1460,13 @@ export default function ServiceAreas() {
                       Same Day
                     </div>
                   </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => setIsQuoteFormOpen(true)}
+                    data-testid={`button-quote-${area.city.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    Request Quote
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -1475,9 +1481,8 @@ export default function ServiceAreas() {
               Get a quote for your location in {stateData.name}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" data-testid="button-get-quote">
-                <Star className="w-4 h-4 mr-2" />
-                Get Free Quote
+              <Button size="lg" onClick={() => setIsQuoteFormOpen(true)} data-testid="button-get-quote">
+                Request Quote
               </Button>
               <Button variant="outline" size="lg" data-testid="button-call-now">
                 <Phone className="w-4 h-4 mr-2" />
@@ -1502,7 +1507,9 @@ export default function ServiceAreas() {
                 Back to Home
               </Button>
             </Link>
-            <span className="text-lg font-semibold text-gray-900">Service Areas</span>
+            <Button onClick={() => setIsQuoteFormOpen(true)} data-testid="header-request-quote">
+              Request Quote
+            </Button>
           </div>
         </div>
       </header>
@@ -1510,6 +1517,9 @@ export default function ServiceAreas() {
       <div className="container mx-auto px-4 py-8">
         {!currentState ? renderStatesList() : renderStateDetail()}
       </div>
+
+      {/* Quote Form Modal */}
+      <QuoteForm isOpen={isQuoteFormOpen} onClose={() => setIsQuoteFormOpen(false)} />
     </div>
   );
 }

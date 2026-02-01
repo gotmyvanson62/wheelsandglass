@@ -1,14 +1,47 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
 import { storage } from '../storage.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const JWT_SECRET = process.env.JWT_SECRET;
+
+/**
+ * SECURITY: Timing-safe password verification
+ * Supports both bcrypt hashes and plaintext passwords
+ * Bcrypt hashes start with $2a$ or $2b$
+ */
+async function verifyPassword(inputPassword: string, storedPassword: string): Promise<boolean> {
+  // Check if stored password is a bcrypt hash
+  if (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$')) {
+    return bcrypt.compare(inputPassword, storedPassword);
+  }
+
+  // SECURITY WARNING: Using plaintext password comparison
+  // This is vulnerable to timing attacks even with timingSafeEqual if lengths differ
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[SECURITY WARNING] Using plaintext ADMIN_PASSWORD in production. Generate a bcrypt hash with: npx bcryptjs hash "yourpassword"');
+  }
+
+  // Use timing-safe comparison for plaintext (still better than direct comparison)
+  const inputBuffer = Buffer.from(inputPassword);
+  const storedBuffer = Buffer.from(storedPassword);
+
+  // Pad to same length to prevent length-based timing attacks
+  const maxLength = Math.max(inputBuffer.length, storedBuffer.length);
+  const paddedInput = Buffer.alloc(maxLength, 0);
+  const paddedStored = Buffer.alloc(maxLength, 0);
+  inputBuffer.copy(paddedInput);
+  storedBuffer.copy(paddedStored);
+
+  return crypto.timingSafeEqual(paddedInput, paddedStored) && inputBuffer.length === storedBuffer.length;
+}
 
 // SECURITY: Aggressive rate limiting for login endpoint to prevent brute-force attacks
 const loginRateLimit = rateLimit({
@@ -56,7 +89,7 @@ const updateUserSchema = z.object({
  * Admin authentication endpoint
  * SECURITY: Rate limited to prevent brute-force attacks
  */
-router.post('/login', loginRateLimit, async (req, res) => {
+router.post('/login', loginRateLimit as unknown as RequestHandler, async (req, res) => {
   try {
     const { password } = req.body;
 
@@ -69,8 +102,17 @@ router.post('/login', loginRateLimit, async (req, res) => {
       });
     }
 
-    // Validate password
-    if (!password || password !== ADMIN_PASSWORD) {
+    // Validate password using timing-safe comparison
+    if (!password) {
+      console.log('[AUTH] Empty password attempt');
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid password. Please try again.'
+      });
+    }
+
+    const isValidPassword = await verifyPassword(password, ADMIN_PASSWORD);
+    if (!isValidPassword) {
       console.log('[AUTH] Invalid password attempt');
       return res.status(401).json({
         success: false,
@@ -87,8 +129,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
 
     // Log successful login
     await storage.createActivityLog({
-      action: 'admin_login',
-      status: 'success',
+      type: 'admin_login',
+      message: 'Admin login successful',
       details: {
         timestamp: new Date().toISOString()
       }
@@ -135,8 +177,8 @@ router.post('/reset', authMiddleware, async (req, res) => {
 
     // Log the reset action
     await storage.createActivityLog({
-      action: 'system_reset',
-      status: 'completed',
+      type: 'system_reset',
+      message: 'System data reset completed',
       details: {
         resetBy: 'admin',
         timestamp: new Date().toISOString()
@@ -204,7 +246,7 @@ router.get('/users', authMiddleware, async (req, res) => {
   try {
     const users = await storage.getAdminUsers();
     // Remove password field from response
-    const safeUsers = users.map(({ password, ...user }) => user);
+    const safeUsers = users.map(({ password, ...user }: any) => user);
     res.json({ success: true, users: safeUsers });
   } catch (error) {
     console.error('[ADMIN] Failed to fetch users:', error);
@@ -232,10 +274,10 @@ router.post('/users', authMiddleware, async (req, res) => {
 
     // Check if username or email already exists
     const existingUsers = await storage.getAdminUsers();
-    if (existingUsers.some(u => u.username === username)) {
+    if (existingUsers.some((u: any) => u.username === username)) {
       return res.status(409).json({ success: false, error: 'Username already exists' });
     }
-    if (existingUsers.some(u => u.email === email)) {
+    if (existingUsers.some((u: any) => u.email === email)) {
       return res.status(409).json({ success: false, error: 'Email already exists' });
     }
 
@@ -243,8 +285,8 @@ router.post('/users', authMiddleware, async (req, res) => {
 
     // Log the action
     await storage.createActivityLog({
-      action: 'user_created',
-      status: 'success',
+      type: 'user_created',
+      message: `Admin user ${username} created`,
       details: { username, email, role }
     });
 
@@ -283,10 +325,10 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
     // Check for duplicate username/email if being updated
     if (updates.username || updates.email) {
       const existingUsers = await storage.getAdminUsers();
-      if (updates.username && existingUsers.some(u => u.username === updates.username && u.id !== id)) {
+      if (updates.username && existingUsers.some((u: any) => u.username === updates.username && u.id !== id)) {
         return res.status(409).json({ success: false, error: 'Username already exists' });
       }
-      if (updates.email && existingUsers.some(u => u.email === updates.email && u.id !== id)) {
+      if (updates.email && existingUsers.some((u: any) => u.email === updates.email && u.id !== id)) {
         return res.status(409).json({ success: false, error: 'Email already exists' });
       }
     }
@@ -298,8 +340,8 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
 
     // Log the action
     await storage.createActivityLog({
-      action: 'user_updated',
-      status: 'success',
+      type: 'user_updated',
+      message: `Admin user ${id} updated`,
       details: { userId: id, updates: Object.keys(updates) }
     });
 
@@ -336,8 +378,8 @@ router.delete('/users/:id', authMiddleware, async (req, res) => {
 
     // Log the action
     await storage.createActivityLog({
-      action: 'user_deleted',
-      status: 'success',
+      type: 'user_deleted',
+      message: `Admin user ${id} deleted`,
       details: { userId: id }
     });
 
@@ -353,7 +395,7 @@ router.delete('/users/:id', authMiddleware, async (req, res) => {
  * Change password for the current user or specified user
  * SECURITY: Requires authentication
  */
-router.put('/password', passwordChangeRateLimit, authMiddleware, async (req, res) => {
+router.put('/password', passwordChangeRateLimit as unknown as RequestHandler, authMiddleware, async (req, res) => {
   try {
     const { userId, currentPassword, newPassword } = req.body;
 
@@ -374,8 +416,8 @@ router.put('/password', passwordChangeRateLimit, authMiddleware, async (req, res
 
     // Log the action
     await storage.createActivityLog({
-      action: 'password_changed',
-      status: 'success',
+      type: 'password_changed',
+      message: 'Admin password changed',
       details: { userId: userId || 1 }
     });
 

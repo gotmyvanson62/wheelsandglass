@@ -225,7 +225,8 @@ export function quoteOwnershipCheck() {
       const submissionId = parseInt(req.params.id);
       if (isNaN(submissionId)) return null;
 
-      const submission = await storage.getQuoteSubmission(submissionId);
+      const submissions = await storage.getQuoteSubmissions();
+      const submission = submissions.find((s: any) => s.id === submissionId);
       return submission?.email || null; // Email is the identifier
     },
     { allowAdmin: true, errorMessage: 'Access denied: you do not own this quote' }

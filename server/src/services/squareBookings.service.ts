@@ -2,7 +2,8 @@ import { Client, Environment } from 'square';
 import type { SquareBookingData } from 'shared';
 
 class SquareBookingsService {
-  private client: Client;
+  private client: Client | null = null;
+  private isConfigured: boolean = false;
 
   constructor() {
     const accessToken = process.env.SQUARE_ACCESS_TOKEN;
@@ -11,18 +12,32 @@ class SquareBookingsService {
       : Environment.Sandbox;
 
     if (!accessToken) {
-      console.warn('Square access token is not configured');
+      console.warn('Square access token is not configured - booking features will be disabled');
+      this.isConfigured = false;
+    } else {
+      this.client = new Client({
+        accessToken,
+        environment,
+      });
+      this.isConfigured = true;
     }
+  }
 
-    this.client = new Client({
-      accessToken: accessToken || 'dummy-token',
-      environment,
-    });
+  private ensureConfigured(): Client {
+    if (!this.client || !this.isConfigured) {
+      throw new Error('Square is not configured. Set SQUARE_ACCESS_TOKEN environment variable.');
+    }
+    return this.client;
+  }
+
+  isReady(): boolean {
+    return this.isConfigured;
   }
 
   async createBooking(bookingData: SquareBookingData) {
     try {
-      const response = await this.client.bookingsApi.createBooking({
+      const client = this.ensureConfigured();
+      const response = await client.bookingsApi.createBooking({
         booking: bookingData,
       });
       return response.result.booking;
@@ -34,7 +49,8 @@ class SquareBookingsService {
 
   async getBooking(bookingId: string) {
     try {
-      const response = await this.client.bookingsApi.retrieveBooking(bookingId);
+      const client = this.ensureConfigured();
+      const response = await client.bookingsApi.retrieveBooking(bookingId);
       return response.result.booking;
     } catch (error) {
       console.error('Square get booking error:', error);
@@ -44,7 +60,8 @@ class SquareBookingsService {
 
   async updateBooking(bookingId: string, version: number, bookingData: Partial<SquareBookingData>) {
     try {
-      const response = await this.client.bookingsApi.updateBooking(bookingId, {
+      const client = this.ensureConfigured();
+      const response = await client.bookingsApi.updateBooking(bookingId, {
         booking: {
           ...bookingData,
           version,
@@ -59,7 +76,8 @@ class SquareBookingsService {
 
   async cancelBooking(bookingId: string, version: number) {
     try {
-      const response = await this.client.bookingsApi.cancelBooking(bookingId, {
+      const client = this.ensureConfigured();
+      const response = await client.bookingsApi.cancelBooking(bookingId, {
         bookingVersion: version,
       });
       return response.result.booking;

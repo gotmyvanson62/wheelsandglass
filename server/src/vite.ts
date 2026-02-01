@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
+// @ts-ignore - vite.config may not exist in all build configurations
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 

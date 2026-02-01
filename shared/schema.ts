@@ -44,10 +44,26 @@ export const transactions = pgTable("transactions", {
   paymentStatus: text("payment_status").$type<'pending' | 'paid' | 'failed'>().default('pending'),
   errorMessage: text("error_message"),
   formData: jsonb("form_data").notNull(),
+  // Track status changes as an array of { status, timestamp, triggeredBy }
+  statusHistory: jsonb("status_history").default(sql`'[]'::jsonb`),
   retryCount: integer("retry_count").default(0).notNull(),
   lastRetry: timestamp("last_retry"),
   sourceType: text("source_type").default('customer'), // 'customer', 'agent', 'insurance'
   tags: text("tags").array(), // For CRM tagging - ['Agent', 'Insurance', etc.]
+});
+
+// Retry queue for failed external operations
+export const retryQueue = pgTable("retry_queue", {
+  id: serial("id").primaryKey(),
+  operation: text("operation").notNull(),
+  payload: jsonb("payload").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  maxAttempts: integer("max_attempts").default(5).notNull(),
+  nextAttemptAt: timestamp("next_attempt_at"),
+  lastError: text("last_error"),
+  isDeadLetter: boolean("is_dead_letter").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const activityLogs = pgTable("activity_logs", {
@@ -363,6 +379,8 @@ export const customers = pgTable("customers", {
   notes: text("notes"),
   accountType: text("account_type").default('individual'), // 'individual', 'business', 'fleet'
   referredBy: text("referred_by"),
+  company: text("company"), // Company/business name for contacts
+  status: text("status").default('active'), // 'active', 'pending', 'inactive'
   totalJobs: integer("total_jobs").default(0),
   totalSpent: integer("total_spent").default(0), // in cents
   lastJobDate: timestamp("last_job_date"),

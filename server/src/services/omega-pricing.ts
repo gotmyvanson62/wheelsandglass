@@ -3,9 +3,9 @@
  * Handles automatic pricing generation based on VIN/License Plate and parts data
  */
 
-import { OmegaEDIService } from './omega-edi';
-import { vinLookupService } from './vin-lookup';
-import { nagsLookupService } from './nags-lookup';
+import { OmegaEDIService } from './omega-edi.js';
+import { vinLookupService } from './vin-lookup.js';
+import { nagsLookupService } from './nags-lookup.js';
 
 export interface PricingRequest {
   vin?: string;
@@ -72,13 +72,13 @@ export class OmegaPricingService {
       if (request.vin) {
         try {
           const vinData = await vinLookupService.lookupVin(request.vin);
-          if (vinData.success && vinData.data) {
+          if (vinData.isValid) {
             vehicleData = {
-              year: vinData.data.year || request.vehicleYear,
-              make: vinData.data.make || request.vehicleMake,
-              model: vinData.data.model || request.vehicleModel,
-              bodyType: vinData.data.bodyType,
-              engine: vinData.data.engine,
+              year: vinData.year?.toString() || request.vehicleYear,
+              make: vinData.make || request.vehicleMake,
+              model: vinData.model || request.vehicleModel,
+              bodyType: vinData.bodyType,
+              engine: vinData.engine,
             };
           }
         } catch (error) {
@@ -87,7 +87,7 @@ export class OmegaPricingService {
       }
       
       // Step 2: Use Omega EDI pricing profiles to calculate pricing
-      const pricing = await this.calculateOmegaPricing(vehicleData, request);
+      const pricing = await this.calculateOmegaPricing(vehicleData, [], request);
 
       return {
         success: true,
@@ -130,12 +130,12 @@ export class OmegaPricingService {
     if (request.vin) {
       try {
         const vinData = await vinLookupService.lookupVin(request.vin);
-        if (vinData.success) {
+        if (vinData.isValid) {
           vehicleData = {
             vin: request.vin,
-            year: vinData.vehicleDetails?.year?.toString() || request.vehicleYear,
-            make: vinData.vehicleDetails?.make || request.vehicleMake,
-            model: vinData.vehicleDetails?.model || request.vehicleModel,
+            year: vinData.year?.toString() || request.vehicleYear,
+            make: vinData.make || request.vehicleMake,
+            model: vinData.model || request.vehicleModel,
           };
         }
       } catch (error) {
@@ -156,17 +156,45 @@ export class OmegaPricingService {
         return this.getBasicPartsFromDescription(damageDescription);
       }
 
-      // Get NAGS parts for the specific vehicle
-      const nagsData = await nagsLookupService.findPartsByVin(vehicleData.vin);
-      
-      // Filter parts based on damage description
-      const relevantParts = this.filterPartsByDamage(nagsData.parts || [], damageDescription);
-      
+      // Get NAGS parts for the specific vehicle using glass options lookup
+      const glassOptions = await nagsLookupService.getGlassOptions(vehicleData.vin, vehicleData);
+      const glassType = this.getDamageGlassType(damageDescription);
+
+      // Get relevant parts based on damage type
+      let relevantParts: any[] = [];
+      if (glassType === 'windshield' && glassOptions.windshield) {
+        relevantParts = glassOptions.windshield;
+      } else if (glassType === 'side_window' && glassOptions.sideWindows) {
+        relevantParts = glassOptions.sideWindows;
+      } else if (glassType === 'rear_glass' && glassOptions.rearGlass) {
+        relevantParts = glassOptions.rearGlass;
+      } else if (glassType === 'quarter_glass' && glassOptions.quarterGlass) {
+        relevantParts = glassOptions.quarterGlass;
+      }
+
+      if (relevantParts.length === 0) {
+        return this.getBasicPartsFromDescription(damageDescription);
+      }
+
       return relevantParts;
     } catch (error) {
       console.log('NAGS lookup failed, using basic parts estimation');
       return this.getBasicPartsFromDescription(damageDescription);
     }
+  }
+
+  /**
+   * Get glass type from damage description
+   */
+  private getDamageGlassType(damageDescription?: string): 'windshield' | 'side_window' | 'rear_glass' | 'quarter_glass' {
+    const description = (damageDescription || '').toLowerCase();
+
+    if (description.includes('windshield')) return 'windshield';
+    if (description.includes('side') || description.includes('door')) return 'side_window';
+    if (description.includes('rear') || description.includes('back')) return 'rear_glass';
+    if (description.includes('quarter')) return 'quarter_glass';
+
+    return 'windshield'; // Default
   }
 
   /**

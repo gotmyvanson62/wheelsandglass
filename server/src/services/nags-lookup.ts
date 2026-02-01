@@ -184,7 +184,7 @@ export class NagsLookupService {
 
     // Sort by price within each category
     Object.values(organized).forEach(categoryParts => {
-      categoryParts?.sort((a, b) => a.price - b.price);
+      categoryParts?.sort((a: any, b: any) => a.price - b.price);
     });
 
     return organized;
@@ -193,7 +193,7 @@ export class NagsLookupService {
   private async getCachedNagsParts(vin: string): Promise<NagsPartOption[]> {
     try {
       const cachedParts = await storage.getNagsPartsByVin(vin);
-      return cachedParts.map(part => ({
+      return cachedParts.map((part: any) => ({
         nagsNumber: part.nagsNumber,
         description: part.description || '',
         glassType: part.glassType as any,

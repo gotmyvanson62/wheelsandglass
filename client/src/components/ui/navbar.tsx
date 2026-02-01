@@ -17,7 +17,7 @@ export function Navbar({ className = "" }: NavbarProps) {
   ];
 
   return (
-    <nav className={`flex items-center space-x-6 bg-gray-50 dark:bg-gray-900 px-6 py-3 border-b ${className}`}>
+    <nav className={`flex items-center space-x-6 bg-gray-50 dark:bg-gray-800 px-6 py-3 border-b ${className}`}>
       <div className="flex items-center">
         <img 
           src="/assets/express-auto-glass-logo.png" 

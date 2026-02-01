@@ -311,7 +311,7 @@ class NotionDocumentationService {
                 }
             ];
 
-            const children = [
+            const children: any[] = [
                 {
                     object: "block",
                     type: "heading_1",
@@ -412,7 +412,7 @@ class NotionDocumentationService {
                 }
             ];
 
-            const children = [
+            const children: any[] = [
                 {
                     object: "block",
                     type: "heading_1",

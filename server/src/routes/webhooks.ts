@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { storage } from '../storage.js';
 import { verifyQuoSignature, verifyTwilioSignature, verifySquareSignature, captureRawBody } from '../middleware/webhook-verification.middleware.js';
 import { quoSmsService, QuoMessage } from '../services/quo-sms-service.js';
+import { emailService } from '../services/email.service.js';
 
 const router = Router();
 
@@ -64,7 +65,7 @@ router.post('/quo-sms', captureRawBody, verifyQuoSignature, async (req: Request,
       appointmentId: null,
       phoneNumber,
       direction: 'inbound',
-      content: messageContent,
+      message: messageContent,
       status: 'received',
       messageType,
     });
@@ -98,7 +99,7 @@ router.post('/quo-sms', captureRawBody, verifyQuoSignature, async (req: Request,
           appointmentId: null,
           phoneNumber,
           direction: 'outbound',
-          content: responseMessage,
+          message: responseMessage,
           status: 'sent',
           messageType: 'auto_reply',
         });
@@ -119,13 +120,60 @@ router.post('/quo-sms', captureRawBody, verifyQuoSignature, async (req: Request,
 
 // POST /api/webhooks/square-booking - Square booking webhook
 // Apply raw body capture and Square signature verification
+// Processes booking.created, booking.updated, and booking.cancelled events
 router.post('/square-booking', captureRawBody, verifySquareSignature, async (req: Request, res: Response) => {
   try {
     console.log('Square booking webhook received:', JSON.stringify(req.body, null, 2));
 
+    const eventType = req.body.type;
+    const bookingData = req.body.data?.object?.booking;
+
+    // Process booking events
+    if (bookingData) {
+      const squareBookingId = bookingData.id;
+      const bookingVersion = bookingData.version;
+      const bookingStatus = bookingData.status; // PENDING, ACCEPTED, DECLINED, CANCELLED_BY_CUSTOMER, CANCELLED_BY_SELLER, NO_SHOW
+
+      console.log(`[SQUARE WEBHOOK] Booking event: ${eventType}, id: ${squareBookingId}, status: ${bookingStatus}`);
+
+      // Find the appointment by Square booking ID
+      const appointments = await storage.getAppointments();
+      const appointment = appointments.find((a: any) => a.squareBookingId === squareBookingId);
+
+      if (appointment) {
+        // Map Square booking status to our appointment status
+        let appointmentStatus = appointment.status;
+        if (bookingStatus === 'ACCEPTED') appointmentStatus = 'confirmed';
+        else if (bookingStatus === 'CANCELLED_BY_CUSTOMER' || bookingStatus === 'CANCELLED_BY_SELLER') appointmentStatus = 'cancelled';
+        else if (bookingStatus === 'NO_SHOW') appointmentStatus = 'no_show';
+        else if (bookingStatus === 'DECLINED') appointmentStatus = 'cancelled';
+
+        // Update appointment with new status
+        await storage.updateAppointment(appointment.id, {
+          status: appointmentStatus,
+        });
+
+        console.log(`[SQUARE WEBHOOK] Appointment ${appointment.id} updated: status=${appointmentStatus}`);
+
+        await storage.createActivityLog({
+          type: 'square_booking_synced',
+          message: `Booking ${squareBookingId} synced: status changed to ${appointmentStatus}`,
+          details: {
+            appointmentId: appointment.id,
+            squareBookingId,
+            bookingStatus,
+            appointmentStatus,
+          },
+        });
+      } else {
+        console.log(`[SQUARE WEBHOOK] No appointment found for booking ${squareBookingId}`);
+      }
+    }
+
+    // Log all webhook events
     await storage.createActivityLog({
       type: 'square_booking_webhook',
-      message: `Square booking webhook: ${req.body.type || 'booking.created'}`,
+      message: `Square booking webhook: ${eventType || 'booking.created'}`,
       details: req.body,
     });
 
@@ -171,7 +219,7 @@ router.post('/square-payment', captureRawBody, verifySquareSignature, async (req
           await storage.updateTransaction(transactionId, {
             paymentStatus: 'paid',
             status: 'success',
-            squarePaymentId: squarePaymentId,
+            squarePaymentLinkId: squarePaymentId,
             finalPrice: amountPaid,
           });
 
@@ -184,6 +232,20 @@ router.post('/square-payment', captureRawBody, verifySquareSignature, async (req
               totalSpent: updatedCustomer?.totalSpent,
               totalJobs: updatedCustomer?.totalJobs,
             });
+
+            // Send payment receipt email
+            if (transaction.customerEmail) {
+              emailService.sendPaymentReceipt({
+                customerName: transaction.customerName || 'Valued Customer',
+                email: transaction.customerEmail,
+                transactionId,
+                amount: amountPaid,
+                paymentMethod: 'Card',
+                date: new Date()
+              }).catch(err => {
+                console.error('Failed to send payment receipt email:', err);
+              });
+            }
           }
 
           await storage.createActivityLog({
@@ -237,8 +299,9 @@ router.post('/twilio-sms', verifyTwilioSignature, async (req: Request, res: Resp
       appointmentId: null,
       phoneNumber: req.body.From,
       direction: 'inbound',
-      content: req.body.Body,
+      message: req.body.Body,
       status: req.body.SmsStatus || 'received',
+      messageType: 'twilio_inbound',
     });
 
     res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
@@ -271,8 +334,8 @@ router.post('/squarespace-form', async (req: Request, res: Response) => {
       vehicleVin: formData.vehicleVin || formData.vin || '',
       damageDescription: formData.damageDescription || formData.notes || '',
       status: 'pending',
-      source: 'squarespace',
-      rawPayload: formData,
+      sourceType: 'squarespace',
+      formData: formData,
     });
 
     res.json({
@@ -292,7 +355,7 @@ router.post('/squarespace-form', async (req: Request, res: Response) => {
 router.get('/events', async (req: Request, res: Response) => {
   try {
     const logs = await storage.getActivityLogs(100);
-    const webhookEvents = logs.filter(log =>
+    const webhookEvents = logs.filter((log: any) =>
       log.type.includes('webhook') ||
       log.type.includes('square') ||
       log.type.includes('quo') ||
@@ -305,11 +368,5 @@ router.get('/events', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch webhook events' });
   }
 });
-
-// Alias routes for backwards compatibility
-router.post('/squarespace', (req, res) => router.handle(Object.assign(req, { url: '/squarespace-form' }), res, () => {}));
-router.post('/square', (req, res) => router.handle(Object.assign(req, { url: '/square-payment' }), res, () => {}));
-router.post('/twilio', (req, res) => router.handle(Object.assign(req, { url: '/twilio-sms' }), res, () => {}));
-router.post('/sms', (req, res) => router.handle(Object.assign(req, { url: '/quo-sms' }), res, () => {})); // New alias for Quo
 
 export default router;

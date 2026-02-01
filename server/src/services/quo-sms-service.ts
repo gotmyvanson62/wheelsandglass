@@ -137,7 +137,7 @@ class QuoSmsService {
         throw new Error(`Quo API error: ${response.status} - ${errorText}`);
       }
 
-      const result: QuoApiResponse<QuoMessage> = await response.json();
+      const result = await response.json() as QuoApiResponse<QuoMessage>;
       console.log(`[QuoSMS] Sent message ${result.data.id} to ${formattedTo}`);
       return result.data;
 
@@ -180,7 +180,7 @@ class QuoSmsService {
         throw new Error(`Quo API error: ${response.status} - ${errorText}`);
       }
 
-      const result: QuoApiResponse<QuoMessage> = await response.json();
+      const result = await response.json() as QuoApiResponse<QuoMessage>;
       console.log(`[QuoSMS] Sent bulk message ${result.data.id} to ${formattedRecipients.length} recipients`);
       return result.data;
 
@@ -218,7 +218,7 @@ class QuoSmsService {
         throw new Error(`Quo API error: ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       return result.data || [];
 
     } catch (error) {
@@ -249,7 +249,7 @@ class QuoSmsService {
         throw new Error(`Quo API error: ${response.status}`);
       }
 
-      const result: QuoApiResponse<QuoMessage> = await response.json();
+      const result = await response.json() as QuoApiResponse<QuoMessage>;
       return result.data;
 
     } catch (error) {
@@ -285,7 +285,7 @@ class QuoSmsService {
         throw new Error(`Quo API error: ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       return result.data || [];
 
     } catch (error) {

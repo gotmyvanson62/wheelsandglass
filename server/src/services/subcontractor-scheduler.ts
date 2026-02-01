@@ -111,16 +111,16 @@ export class SubcontractorSchedulerService {
         targetDate
       );
 
-      if (availability && availability.isAvailable && availability.currentJobs < availability.maxJobs) {
+      if (availability && availability.isAvailable && (availability.currentJobs ?? 0) < (availability.maxJobs ?? 10)) {
         const timeSlots = availability.timeSlots as string[] || ['09:00', '13:00'];
-        
+
         timeSlots.forEach(timeSlot => {
           availableSlots.push({
             subcontractorId: subcontractor.id,
             subcontractorName: subcontractor.name,
             availableDate: targetDate,
             timeSlot,
-            rating: subcontractor.rating,
+            rating: subcontractor.rating ?? 0,
             estimatedPrice: this.estimatePrice(glassType || ''),
             distance: this.calculateDistance(customerLocation, subcontractor.serviceAreas as string[]),
             specialties: subcontractor.specialties as string[] || []
@@ -155,8 +155,8 @@ export class SubcontractorSchedulerService {
     if (!jobRequest) return;
 
     // Get job details for notification
-    const transaction = await storage.getTransaction(jobRequest.transactionId);
-    const nagsPart = await storage.getNagsPart(jobRequest.nagsPartId);
+    const transaction = jobRequest.transactionId ? await storage.getTransaction(jobRequest.transactionId) : null;
+    const nagsPart = jobRequest.nagsPartId ? await storage.getNagsPart(jobRequest.nagsPartId) : null;
 
     const notificationData = {
       jobRequestId,
@@ -246,11 +246,12 @@ export class SubcontractorSchedulerService {
       if (jobRequest) {
         await storage.createAppointment({
           transactionId: jobRequest.transactionId,
-          omegaJobId: `JOB-${jobRequestId}`,
+          customerName: '', // Would get from transaction
           customerEmail: '', // Would get from transaction
           customerPhone: null,
-          scheduledDate: bestResponse.proposedDate,
-          installerAvailability: bestResponse.availableTimeSlots,
+          requestedDate: bestResponse.proposedDate?.toISOString().split('T')[0] || '',
+          requestedTime: (bestResponse.availableTimeSlots as string[] | null)?.[0] || '',
+          serviceAddress: jobRequest.customerLocation || '',
           status: 'scheduled',
           calendarInvitationSent: false,
         });

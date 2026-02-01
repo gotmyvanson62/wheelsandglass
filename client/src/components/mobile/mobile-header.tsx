@@ -9,10 +9,10 @@ import {
 } from '@/components/ui/sheet';
 
 const navigationItems = [
-  { href: '/', label: 'Dashboard', icon: '📊' },
-  { href: '/crm', label: 'CRM', icon: '👥' },
-  { href: '/error-monitor', label: 'Operations', icon: '⚙️' },
-  { href: '/configuration', label: 'Config & Docs', icon: '🔧' },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
+  { href: '/admin/crm', label: 'CRM', icon: '👥' },
+  { href: '/admin/analytics', label: 'Operations', icon: '⚙️' },
+  { href: '/admin/settings', label: 'Config & Docs', icon: '🔧' },
 ];
 
 export function MobileHeader() {

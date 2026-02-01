@@ -121,7 +121,7 @@ export default function Features() {
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Phone className="w-8 h-8 text-blue-600" />
                 </div>
-                <h3 className="font-semibold mb-2">1. Get Quote</h3>
+                <h3 className="font-semibold mb-2">1. Request Quote</h3>
                 <p className="text-gray-600 text-sm">
                   Contact us online or by phone for an instant quote on your auto glass needs.
                 </p>
@@ -157,7 +157,7 @@ export default function Features() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/">
               <Button size="lg" variant="secondary">
-                Get Free Quote
+                Request Quote
               </Button>
             </Link>
             <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">

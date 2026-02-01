@@ -10,7 +10,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     const transactions = await storage.getTransactions({ limit: 50 });
 
     // Transform transactions to job-like format
-    const jobs = transactions.map(t => ({
+    const jobs = transactions.map((t: any) => ({
       id: t.id,
       jobNumber: `JOB-${t.id.toString().padStart(5, '0')}`,
       status: t.status,

@@ -123,4 +123,20 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Start follow-up automation service (sends review requests)
+  try {
+    const { startFollowUpAutomation } = await import('./services/follow-up-automation.js');
+    startFollowUpAutomation();
+  } catch (err) {
+    console.error('[Index] Failed to start follow-up automation:', err);
+  }
+
+  // Start retry queue worker
+  try {
+    const { startRetryQueueWorker } = await import('./services/retry-queue-worker.js');
+    startRetryQueueWorker();
+  } catch (err) {
+    console.error('[Index] Failed to start retry queue worker:', err);
+  }
 })();

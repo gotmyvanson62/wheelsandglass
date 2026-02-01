@@ -110,7 +110,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   // On mobile, show simple layout without complex sidebar
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 transition-colors">
         {/* Quick Navigation Header - Mobile */}
         <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-50 h-12 transition-colors">
           <div className="flex items-center justify-between px-3 h-full">
@@ -213,7 +213,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
         )}
         
         {/* Mobile Content */}
-        <div className="pt-14 p-2 bg-white dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="pt-14 p-2 bg-white dark:bg-gray-800 min-h-screen transition-colors">
           {children}
         </div>
       </div>
@@ -221,7 +221,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 w-full transition-colors">
+    <div className="min-h-screen bg-white dark:bg-gray-800 w-full transition-colors">
       {/* Quick Navigation Header - Desktop */}
       <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-50 h-12 transition-colors">
         <div className="flex items-center justify-between px-4 h-full">
@@ -231,7 +231,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
                 <Car className="w-3.5 h-3.5 text-white" />
               </div>
             </Link>
-            <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Admin Portal</span>
           </div>
           
@@ -251,7 +251,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
             <Link to="/admin/settings" className="text-sm text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" data-testid="quick-nav-settings">
               Settings
             </Link>
-            <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
             <Button
               variant="ghost"
               size="sm"
@@ -368,7 +368,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors">
+        <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-800 transition-colors">
           {/* Mobile Menu Button - Always visible on mobile */}
           <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -388,7 +388,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
           </div>
 
           {/* Page Content */}
-          <main className="flex-1 overflow-auto bg-white dark:bg-gray-900 transition-colors">
+          <main className="flex-1 overflow-auto bg-white dark:bg-gray-800 transition-colors">
             <div className="p-6">
               {children}
             </div>

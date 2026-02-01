@@ -130,7 +130,10 @@ export default function Dashboard() {
       {/* Quick Stats Cards */}
       <StatusCards
         stats={stats}
-        onCardClick={(filter) => console.log(`Clicked ${filter} card`)}
+        onCardClick={(filter) => {
+          // Navigate to CRM with status filter
+          window.location.href = `/admin/crm/jobs?status=${filter}`;
+        }}
       />
 
       {/* Quote Requests */}

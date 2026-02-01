@@ -1,17 +1,21 @@
 import { db } from './db.js';
 import { notifications, type InsertNotification, type Notification } from '@shared/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { WebSocket } from 'ws';
 
 // Active WebSocket connections for real-time notifications
 const activeConnections = new Set<WebSocket>();
+
+// In-memory notifications for development when db is not available
+const inMemoryNotifications: Notification[] = [];
+let notificationIdCounter = 1;
 
 export class NotificationService {
   // Add a WebSocket connection to receive real-time notifications
   static addConnection(ws: WebSocket) {
     activeConnections.add(ws);
     console.log(`[Notifications] Connection added. Total: ${activeConnections.size}`);
-    
+
     // Remove connection when it closes
     ws.on('close', () => {
       activeConnections.delete(ws);
@@ -22,14 +26,30 @@ export class NotificationService {
   // Create a new notification and broadcast it
   static async createNotification(data: Omit<InsertNotification, 'id' | 'createdAt'>): Promise<Notification> {
     try {
-      // Insert into database
-      const [notification] = await db
-        .insert(notifications)
-        .values({
+      let notification: Notification;
+
+      if (db) {
+        // Insert into database
+        const [dbNotification] = await db
+          .insert(notifications)
+          .values({
+            ...data,
+            createdAt: new Date(),
+          })
+          .returning();
+        notification = dbNotification;
+      } else {
+        // Use in-memory storage for development
+        notification = {
+          id: `notif-${notificationIdCounter++}`,
           ...data,
           createdAt: new Date(),
-        })
-        .returning();
+          resolved: false,
+          resolvedAt: null,
+          resolvedBy: null,
+        } as Notification;
+        inMemoryNotifications.unshift(notification);
+      }
 
       console.log(`[Notifications] Created: ${notification.type} - ${notification.title}`);
 
@@ -70,11 +90,14 @@ export class NotificationService {
   // Get recent notifications
   static async getRecentNotifications(limit: number = 50): Promise<Notification[]> {
     try {
-      return await db
-        .select()
-        .from(notifications)
-        .orderBy(desc(notifications.createdAt))
-        .limit(limit);
+      if (db) {
+        return await db
+          .select()
+          .from(notifications)
+          .orderBy(desc(notifications.createdAt))
+          .limit(limit);
+      }
+      return inMemoryNotifications.slice(0, limit);
     } catch (error) {
       console.error('[Notifications] Failed to fetch notifications:', error);
       return [];
@@ -84,11 +107,14 @@ export class NotificationService {
   // Get unresolved notifications
   static async getUnresolvedNotifications(): Promise<Notification[]> {
     try {
-      return await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.resolved, false))
-        .orderBy(desc(notifications.createdAt));
+      if (db) {
+        return await db
+          .select()
+          .from(notifications)
+          .where(eq(notifications.resolved, false))
+          .orderBy(desc(notifications.createdAt));
+      }
+      return inMemoryNotifications.filter(n => !n.resolved);
     } catch (error) {
       console.error('[Notifications] Failed to fetch unresolved notifications:', error);
       return [];
@@ -98,14 +124,23 @@ export class NotificationService {
   // Mark notification as resolved
   static async resolveNotification(notificationId: string, resolvedBy?: string): Promise<void> {
     try {
-      await db
-        .update(notifications)
-        .set({
-          resolved: true,
-          resolvedAt: new Date(),
-          resolvedBy,
-        })
-        .where(eq(notifications.id, notificationId));
+      if (db) {
+        await db
+          .update(notifications)
+          .set({
+            resolved: true,
+            resolvedAt: new Date(),
+            resolvedBy,
+          })
+          .where(eq(notifications.id, notificationId));
+      } else {
+        const notification = inMemoryNotifications.find(n => n.id === notificationId);
+        if (notification) {
+          notification.resolved = true;
+          notification.resolvedAt = new Date();
+          notification.resolvedBy = resolvedBy || null;
+        }
+      }
 
       // Broadcast update to all clients
       const updateMessage = JSON.stringify({

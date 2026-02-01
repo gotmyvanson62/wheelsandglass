@@ -84,7 +84,7 @@ export default function Configuration() {
     <div className="space-y-4 lg:space-y-6 max-w-full overflow-x-hidden">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold">Configuration</h1>
-        <p className="text-gray-600">Manage system settings, integrations, and API configurations</p>
+        <p className="text-gray-600 dark:text-gray-400">Manage system settings, integrations, and API configurations</p>
       </div>
 
       <Tabs defaultValue="integration">
@@ -144,7 +144,7 @@ export default function Configuration() {
                 <Link className="w-5 h-5" />
                 Integration Overview
               </CardTitle>
-              <p className="text-gray-600">Configure your main integration connections and endpoints</p>
+              <p className="text-gray-600 dark:text-gray-400">Configure your main integration connections and endpoints</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Squarespace Integration */}
@@ -152,9 +152,9 @@ export default function Configuration() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-medium">Squarespace Integration</h3>
-                    <p className="text-sm text-gray-600">Form submission webhook endpoint</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Form submission webhook endpoint</p>
                   </div>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Active</Badge>
                 </div>
                 <div className="space-y-3">
                   <div>
@@ -163,7 +163,7 @@ export default function Configuration() {
                       <Input 
                         value={fullWebhookUrl}
                         readOnly
-                        className="font-mono text-sm bg-gray-50"
+                        className="font-mono text-sm bg-gray-50 dark:bg-gray-800"
                       />
                       <Button size="sm" variant="outline" onClick={copyWebhookUrl}>
                         <Copy className="w-4 h-4" />
@@ -178,9 +178,9 @@ export default function Configuration() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-medium">Omega EDI Integration</h3>
-                    <p className="text-sm text-gray-600">Auto glass ERP system connection</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Auto glass ERP system connection</p>
                   </div>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Active</Badge>
                 </div>
               </div>
 
@@ -189,9 +189,9 @@ export default function Configuration() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-medium">Square Integration</h3>
-                    <p className="text-sm text-gray-600">Payment processing and appointments</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Payment processing and appointments</p>
                   </div>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Active</Badge>
                 </div>
                 <div className="space-y-3">
                   <div>
@@ -200,7 +200,7 @@ export default function Configuration() {
                       <Input 
                         value="https://book.squareup.com/appointments/b797361a-90ce-4a01-b7a7-7e1c050ad61c"
                         readOnly
-                        className="font-mono text-sm bg-gray-50"
+                        className="font-mono text-sm bg-gray-50 dark:bg-gray-800"
                       />
                       <Button size="sm" variant="outline" asChild>
                         <a href="https://book.squareup.com/appointments/b797361a-90ce-4a01-b7a7-7e1c050ad61c" target="_blank">
@@ -223,14 +223,14 @@ export default function Configuration() {
                 <Key className="w-5 h-5" />
                 API Credentials & Settings
               </CardTitle>
-              <p className="text-gray-600">Manage API keys, tokens, and authentication settings</p>
+              <p className="text-gray-600 dark:text-gray-400">Manage API keys, tokens, and authentication settings</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {Array.isArray(configurations) && configurations.map((config: any) => (
                 <div key={config.key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center p-4 border rounded-lg">
                   <div>
                     <Label className="font-medium">{config.key.replace(/_/g, ' ').toUpperCase()}</Label>
-                    <p className="text-sm text-gray-600">{config.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{config.description}</p>
                   </div>
                   <div className="flex-1">
                     {editingConfig === config.key ? (
@@ -240,7 +240,7 @@ export default function Configuration() {
                         className="w-full"
                       />
                     ) : (
-                      <div className="font-mono text-sm bg-gray-50 p-2 rounded border">
+                      <div className="font-mono text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border">
                         {config.value}
                       </div>
                     )}
@@ -279,7 +279,7 @@ export default function Configuration() {
                 <Database className="w-5 h-5" />
                 Field Mappings Configuration
               </CardTitle>
-              <p className="text-gray-600">Configure how Squarespace form fields map to Omega EDI job fields</p>
+              <p className="text-gray-600 dark:text-gray-400">Configure how Squarespace form fields map to Omega EDI job fields</p>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -288,19 +288,19 @@ export default function Configuration() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 lg:gap-4">
                       <div>
                         <Label className="text-sm font-medium">Squarespace Field</Label>
-                        <div className="font-mono text-sm bg-gray-50 p-2 rounded border mt-1">
+                        <div className="font-mono text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border mt-1">
                           {mapping.squarespaceField}
                         </div>
                       </div>
                       <div>
                         <Label className="text-sm font-medium">Omega EDI Field</Label>
-                        <div className="font-mono text-sm bg-gray-50 p-2 rounded border mt-1">
+                        <div className="font-mono text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border mt-1">
                           {mapping.omegaField}
                         </div>
                       </div>
                       <div>
                         <Label className="text-sm font-medium">Transform Rule</Label>
-                        <div className="text-sm bg-gray-50 p-2 rounded border mt-1">
+                        <div className="text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border mt-1">
                           {mapping.transformRule || 'None'}
                         </div>
                       </div>
@@ -326,7 +326,7 @@ export default function Configuration() {
                 <TestTube className="w-5 h-5" />
                 System Testing
               </CardTitle>
-              <p className="text-gray-600">Test integrations and system functionality</p>
+              <p className="text-gray-600 dark:text-gray-400">Test integrations and system functionality</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">

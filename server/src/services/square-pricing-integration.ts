@@ -51,8 +51,8 @@ export class SquarePricingIntegrationService {
       let vehicleInfo = '';
       if (transactionData.vin) {
         const vinData = await vinLookupService.lookupVin(transactionData.vin);
-        if (vinData.success) {
-          vehicleInfo = `${vinData.data.year} ${vinData.data.make} ${vinData.data.model}`;
+        if (vinData.isValid) {
+          vehicleInfo = `${vinData.year} ${vinData.make} ${vinData.model}`;
         }
       } else {
         vehicleInfo = `${transactionData.year || ''} ${transactionData.make || ''} ${transactionData.model || ''}`.trim();
@@ -71,25 +71,25 @@ export class SquarePricingIntegrationService {
       });
 
       if (!pricingResult.success) {
-        throw new Error(`Omega pricing failed: ${pricingResult.error}`);
+        throw new Error(`Omega pricing failed: ${pricingResult.message}`);
       }
 
       // Prepare Square pricing data
       const squarePricing: SquarePricingData = {
         serviceId: `omega-${transactionData.serviceType}-${transactionData.transactionId}`,
         serviceName: this.formatServiceName(transactionData.serviceType, vehicleInfo),
-        basePrice: pricingResult.pricing.totalPrice,
-        duration: pricingResult.pricing.estimatedDuration || 120, // default 2 hours
-        description: `${vehicleInfo} - ${transactionData.damageType}\nParts: $${pricingResult.pricing.partsCost}\nLabor: $${pricingResult.pricing.laborCost}\nFees: $${pricingResult.pricing.additionalFees}`,
+        basePrice: pricingResult.totalPrice,
+        duration: pricingResult.estimatedDuration || 120, // default 2 hours
+        description: `${vehicleInfo} - ${transactionData.damageType}\nParts: $${pricingResult.partsCost}\nLabor: $${pricingResult.laborCost}\nFees: $${pricingResult.additionalFees}`,
         vehicleInfo,
         referenceId: transactionData.transactionId.toString(),
       };
 
       return squarePricing;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Square pricing generation error:', error);
-      throw new Error(`Failed to generate Square pricing: ${error.message}`);
+      throw new Error(`Failed to generate Square pricing: ${error?.message || 'Unknown error'}`);
     }
   }
 
@@ -137,11 +137,11 @@ export class SquarePricingIntegrationService {
         squareBookingUrl,
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error pushing pricing to Square:', error);
       return {
         success: false,
-        error: error.message,
+        error: error?.message || 'Unknown error',
       };
     }
   }
@@ -164,10 +164,13 @@ export class SquarePricingIntegrationService {
       }
 
       // Create simplified Omega EDI quote from confirmed booking
-      const quoteResult = { success: true, quoteId: `quote-${Date.now()}` }; // Simplified for now
+      const quoteResult: { success: boolean; quoteId: string; error?: string } = {
+        success: true,
+        quoteId: `quote-${Date.now()}`
+      };
 
       if (!quoteResult.success) {
-        throw new Error(`Failed to create Omega quote: ${quoteResult.error}`);
+        throw new Error(`Failed to create Omega quote: ${quoteResult.error || 'Unknown error'}`);
       }
 
       return {
@@ -175,11 +178,11 @@ export class SquarePricingIntegrationService {
         omegaQuoteId: quoteResult.quoteId,
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Booking confirmation processing error:', error);
       return {
         success: false,
-        error: error.message,
+        error: error?.message || 'Unknown error',
       };
     }
   }
@@ -238,11 +241,11 @@ export class SquarePricingIntegrationService {
         },
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Complete workflow error:', error);
       return {
         success: false,
-        error: error.message,
+        error: error?.message || 'Unknown error',
       };
     }
   }

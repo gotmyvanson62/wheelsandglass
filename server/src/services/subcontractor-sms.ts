@@ -56,7 +56,7 @@ export class SubcontractorSmsService {
       // Create job request record
       const jobRequest = await storage.createJobRequest({
         transactionId: request.transactionId,
-        vin: null, // Not always available from initial form
+        vin: '', // Not always available from initial form
         nagsPartId: null,
         customerLocation: request.serviceAddress,
         preferredDate: request.requestedDate ? new Date(request.requestedDate) : null,
@@ -95,7 +95,6 @@ export class SubcontractorSmsService {
           // Log SMS interaction
           await storage.createSmsInteraction({
             phoneNumber: subcontractor.phone,
-            timestamp: new Date(),
             status: 'sent',
             message: smsMessage,
             appointmentId: null,
@@ -162,14 +161,12 @@ export class SubcontractorSmsService {
         response: responseType,
         availableTimeSlots: proposedDateTime ? [proposedDateTime] : [],
         proposedDate: proposedDateTime ? new Date(proposedDateTime) : null,
-        respondedAt: new Date(),
         notes: message
       });
 
       // Log SMS interaction
       await storage.createSmsInteraction({
         phoneNumber,
-        timestamp: new Date(),
         status: 'received',
         message,
         appointmentId: null,
@@ -191,7 +188,7 @@ export class SubcontractorSmsService {
         subcontractorPhone: phoneNumber,
         jobId,
         response: responseType,
-        proposedDateTime,
+        proposedDateTime: proposedDateTime ?? undefined,
         message
       };
 

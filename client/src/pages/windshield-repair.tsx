@@ -324,23 +324,6 @@ export default function WindshieldRepair() {
           </CardContent>
         </Card>
 
-        {/* Call to Action */}
-        <div className="text-center bg-gradient-to-r from-blue-600 to-green-600 text-white p-8 rounded-lg">
-          <h2 className="text-2xl font-bold mb-4">Get Your Windshield Repaired Today</h2>
-          <p className="text-blue-100 mb-6">
-            Fast, affordable, and convenient mobile repair service. Most insurance covers 100% of repair costs.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 font-semibold shadow-lg">
-                Get Free Repair Quote
-              </Button>
-            </Link>
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">
-              Emergency Service: 1-800-EXPRESS
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   );

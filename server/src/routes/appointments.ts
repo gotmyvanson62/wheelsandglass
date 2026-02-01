@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
+import { emailService } from '../services/email.service.js';
 
 const router = Router();
 
@@ -106,7 +107,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     // Filter by date range if provided
     if (start && typeof start === 'string') {
       const startDate = new Date(start);
-      appointments = appointments.filter(a => {
+      appointments = appointments.filter((a: any) => {
         const appointmentDate = new Date(a.scheduledDate || a.requestedDate);
         return appointmentDate >= startDate;
       });
@@ -116,7 +117,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
       const endDate = new Date(end);
       // Set end date to end of day
       endDate.setHours(23, 59, 59, 999);
-      appointments = appointments.filter(a => {
+      appointments = appointments.filter((a: any) => {
         const appointmentDate = new Date(a.scheduledDate || a.requestedDate);
         return appointmentDate <= endDate;
       });
@@ -124,11 +125,11 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 
     // Filter by status if provided
     if (status && typeof status === 'string') {
-      appointments = appointments.filter(a => a.status === status);
+      appointments = appointments.filter((a: any) => a.status === status);
     }
 
     // Sort by date (earliest first)
-    appointments.sort((a, b) => {
+    appointments.sort((a: any, b: any) => {
       const dateA = new Date(a.scheduledDate || a.requestedDate).getTime();
       const dateB = new Date(b.scheduledDate || b.requestedDate).getTime();
       return dateA - dateB;
@@ -235,6 +236,19 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       },
     });
 
+    // Send appointment confirmation email (async, don't block response)
+    emailService.sendAppointmentConfirmation({
+      customerName: appointmentData.customerName,
+      email: appointmentData.customerEmail,
+      appointmentId: appointment.id,
+      date: new Date(appointmentData.requestedDate),
+      time: appointmentData.requestedTime,
+      location: appointmentData.serviceAddress,
+      serviceType: 'Auto Glass Service'
+    }).catch(err => {
+      console.error('Failed to send appointment confirmation email:', err);
+    });
+
     res.status(201).json({
       success: true,
       data: appointment,
@@ -273,7 +287,12 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     const updates = validationResult.data;
-    const appointment = await storage.updateAppointment(id, updates);
+    // Convert scheduledDate string to Date if present
+    const processedUpdates = {
+      ...updates,
+      scheduledDate: updates.scheduledDate ? new Date(updates.scheduledDate) : undefined,
+    };
+    const appointment = await storage.updateAppointment(id, processedUpdates as any);
 
     if (!appointment) {
       return res.status(404).json({

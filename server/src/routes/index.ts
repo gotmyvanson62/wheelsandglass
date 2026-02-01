@@ -11,6 +11,9 @@ import techniciansRouter from './technicians.js';
 import messagesRouter from './messages.js';
 import contactsRouter from './contacts.js';
 import adminRouter from './admin.js';
+import invoicesRouter from './invoices.js';
+import subcontractorsRouter from './subcontractors.js';
+import omegaRouter from './omega.js';
 
 const router = Router();
 
@@ -27,5 +30,8 @@ router.use('/technicians', techniciansRouter);
 router.use('/messages', messagesRouter);
 router.use('/contacts', contactsRouter);
 router.use('/admin', adminRouter);
+router.use('/invoices', invoicesRouter);
+router.use('/subcontractors', subcontractorsRouter);
+router.use('/omega', omegaRouter);
 
 export default router;

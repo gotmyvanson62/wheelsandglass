@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios';
-import { vinLookupService } from './vin-lookup';
+import { vinLookupService } from './vin-lookup.js';
 
 export interface PricingRequest {
   vin?: string;
@@ -72,13 +72,13 @@ export class OmegaPricingService {
       if (request.vin) {
         try {
           const vinData = await vinLookupService.lookupVin(request.vin);
-          if (vinData.success && vinData.data) {
+          if (vinData.isValid) {
             vehicleData = {
-              year: vinData.data.year || request.vehicleYear,
-              make: vinData.data.make || request.vehicleMake,
-              model: vinData.data.model || request.vehicleModel,
-              bodyType: vinData.data.bodyType,
-              engine: vinData.data.engine,
+              year: vinData.year || request.vehicleYear,
+              make: vinData.make || request.vehicleMake,
+              model: vinData.model || request.vehicleModel,
+              bodyType: vinData.bodyType,
+              engine: vinData.engine,
             };
           }
         } catch (error) {
@@ -100,7 +100,7 @@ export class OmegaPricingService {
         message: 'Pricing generated successfully using Omega EDI pricing profiles',
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Omega EDI pricing generation error:', error);
       return {
         success: false,
@@ -110,7 +110,7 @@ export class OmegaPricingService {
         additionalFees: 0,
         breakdown: { parts: [], labor: [], fees: [] },
         estimatedDuration: 120,
-        message: `Pricing generation failed: ${error.message}`,
+        message: `Pricing generation failed: ${error?.message || 'Unknown error'}`,
       };
     }
   }
@@ -160,9 +160,9 @@ export class OmegaPricingService {
         },
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Omega pricing calculation error:', error);
-      throw new Error(`Failed to calculate Omega EDI pricing: ${error.message}`);
+      throw new Error(`Failed to calculate Omega EDI pricing: ${error?.message || 'Unknown error'}`);
     }
   }
 
@@ -279,11 +279,11 @@ export class OmegaPricingService {
         success: true,
         quoteId,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Omega quote creation error:', error);
       return {
         success: false,
-        error: error.message,
+        error: error?.message || 'Unknown error',
       };
     }
   }

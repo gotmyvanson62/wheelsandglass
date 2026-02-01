@@ -16,34 +16,34 @@ router.get('/stats', async (_req: Request, res: Response) => {
 
     // Get all transactions for revenue calculation
     const allTransactions = await storage.getTransactions();
-    const successfulTransactions = allTransactions.filter(t => t.status === 'success');
+    const successfulTransactions = allTransactions.filter((t: any) => t.status === 'success');
 
     // Calculate today's metrics
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayTransactions = successfulTransactions.filter(t =>
+    const todayTransactions = successfulTransactions.filter((t: any) =>
       new Date(t.createdAt) >= today
     );
 
     // Calculate revenue (default $275 RPJ if no amount specified)
     const RPJ_DEFAULT = 27500; // $275.00 in cents
-    const invoicesPaid = successfulTransactions.filter(t => t.paymentStatus === 'paid').length;
-    const totalRevenue = successfulTransactions.reduce((sum, t) =>
+    const invoicesPaid = successfulTransactions.filter((t: any) => t.paymentStatus === 'paid').length;
+    const totalRevenue = successfulTransactions.reduce((sum: number, t: any) =>
       sum + (t.amount || RPJ_DEFAULT), 0
     );
     const completedToday = todayTransactions.length;
-    const revenueToday = todayTransactions.reduce((sum, t) =>
+    const revenueToday = todayTransactions.reduce((sum: number, t: any) =>
       sum + (t.amount || RPJ_DEFAULT), 0
     );
 
     const stats = {
       formSubmissions: transactionStats.total,
-      jobsScheduled: appointments.filter(a => a.status === 'scheduled' || a.status === 'confirmed').length,
+      jobsScheduled: appointments.filter((a: any) => a.status === 'scheduled' || a.status === 'confirmed').length,
       jobsCompleted: transactionStats.success,
       invoicesPaid,
       totalRevenue,
       pendingJobs: transactionStats.pending,
-      activeJobs: appointments.filter(a => a.status === 'in_progress').length,
+      activeJobs: appointments.filter((a: any) => a.status === 'in_progress').length,
       completedToday,
       revenueToday,
     };
@@ -52,7 +52,7 @@ router.get('/stats', async (_req: Request, res: Response) => {
       success: true,
       data: {
         stats,
-        recentActivity: activityLogs.map(log => ({
+        recentActivity: activityLogs.map((log: any) => ({
           id: log.id,
           type: log.type,
           message: log.message,
@@ -130,7 +130,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
     const stats = await storage.getTransactionStats();
     const appointments = await storage.getAppointments();
 
-    const pendingAppointments = appointments.filter(a =>
+    const pendingAppointments = appointments.filter((a: any) =>
       a.status === 'requested' || a.status === 'scheduled'
     ).length;
 

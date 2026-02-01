@@ -1,4 +1,16 @@
-// Centralized API client with robust error handling
+/**
+ * Centralized API Client
+ *
+ * Use this for direct API calls (not using React Query).
+ * For React Query hooks, use the queryClient from ./queryClient.ts
+ *
+ * Features:
+ * - Automatic timeout handling (30s default)
+ * - Consistent error handling with ApiError class
+ * - Type-safe responses
+ * - Automatic JSON parsing
+ */
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -172,4 +184,20 @@ export function handleApiError(error: unknown): string {
 // Helper to check if error is an unauthorized error
 export function isUnauthorizedError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
+// Helper to check if error is a network error
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 0;
+}
+
+// Helper to check if error is a timeout
+export function isTimeoutError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 408;
+}
+
+// Helper to check if error is retryable (network, timeout, or 5xx)
+export function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  return error.status === 0 || error.status === 408 || error.status >= 500;
 }

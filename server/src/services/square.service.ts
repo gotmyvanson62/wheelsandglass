@@ -1,7 +1,8 @@
 import { Client, Environment } from 'square';
 
 class SquareService {
-  private client: Client;
+  private client: Client | null = null;
+  private isConfigured: boolean = false;
 
   constructor() {
     const accessToken = process.env.SQUARE_ACCESS_TOKEN;
@@ -10,18 +11,32 @@ class SquareService {
       : Environment.Sandbox;
 
     if (!accessToken) {
-      console.warn('Square access token is not configured');
+      console.warn('Square access token is not configured - payment features will be disabled');
+      this.isConfigured = false;
+    } else {
+      this.client = new Client({
+        accessToken,
+        environment,
+      });
+      this.isConfigured = true;
     }
+  }
 
-    this.client = new Client({
-      accessToken: accessToken || 'dummy-token',
-      environment,
-    });
+  private ensureConfigured(): Client {
+    if (!this.client || !this.isConfigured) {
+      throw new Error('Square is not configured. Set SQUARE_ACCESS_TOKEN environment variable.');
+    }
+    return this.client;
+  }
+
+  isReady(): boolean {
+    return this.isConfigured;
   }
 
   async createPayment(amount: number, sourceId: string, idempotencyKey: string) {
     try {
-      const response = await this.client.paymentsApi.createPayment({
+      const client = this.ensureConfigured();
+      const response = await client.paymentsApi.createPayment({
         sourceId,
         idempotencyKey,
         amountMoney: {
@@ -39,7 +54,8 @@ class SquareService {
 
   async getPayment(paymentId: string) {
     try {
-      const response = await this.client.paymentsApi.getPayment(paymentId);
+      const client = this.ensureConfigured();
+      const response = await client.paymentsApi.getPayment(paymentId);
       return response.result.payment;
     } catch (error) {
       console.error('Square get payment error:', error);
@@ -49,12 +65,10 @@ class SquareService {
 
   async listPayments(locationId?: string) {
     try {
-      const response = await this.client.paymentsApi.listPayments(
-        undefined,
-        undefined,
-        undefined,
-        locationId || process.env.SQUARE_LOCATION_ID
-      );
+      const client = this.ensureConfigured();
+      const response = await client.paymentsApi.listPayments({
+        locationId: locationId || process.env.SQUARE_LOCATION_ID
+      });
       return response.result.payments;
     } catch (error) {
       console.error('Square list payments error:', error);
@@ -64,7 +78,8 @@ class SquareService {
 
   async createPaymentLink(amount: number, description: string) {
     try {
-      const response = await this.client.checkoutApi.createPaymentLink({
+      const client = this.ensureConfigured();
+      const response = await client.checkoutApi.createPaymentLink({
         order: {
           locationId: process.env.SQUARE_LOCATION_ID!,
           lineItems: [{

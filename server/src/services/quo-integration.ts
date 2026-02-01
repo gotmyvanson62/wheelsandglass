@@ -143,7 +143,6 @@ export class QuoIntegrationService {
           // Log the SMS interaction
           await storage.createSmsInteraction({
             phoneNumber: subcontractor.phone,
-            timestamp: new Date(),
             status: quoResult ? 'sent' : 'logged',
             message: smsContent,
             appointmentId: null,
@@ -325,7 +324,7 @@ RESCHEDULE {{job_id}} [new time] - to propose different time`,
   private async findSubcontractorByPhone(phoneNumber: string): Promise<Subcontractor | null> {
     try {
       const subcontractors = await storage.getActiveSubcontractors();
-      return subcontractors.find(sub => sub.phone === phoneNumber) || null;
+      return subcontractors.find((sub: any) => sub.phone === phoneNumber) || null;
     } catch (error) {
       return null;
     }

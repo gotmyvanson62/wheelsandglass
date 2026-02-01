@@ -207,10 +207,10 @@ export default function CRM() {
 
   const getStatusColor = (status: Contact['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'inactive': return 'bg-gray-100 dark:bg-gray-700 text-gray-800 border-gray-200 dark:border-gray-700';
-      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-800 border-gray-200 dark:border-gray-700';
+      case 'active': return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800';
+      case 'inactive': return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700';
+      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -230,58 +230,70 @@ export default function CRM() {
   return (
     <div className="space-y-4 lg:space-y-6 max-w-full overflow-x-hidden">
 
-      {/* Header with Add Contact Button */}
+      {/* Header with Tab-Specific Actions */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">CRM & Communication</h1>
-        <Dialog open={addContactOpen} onOpenChange={setAddContactOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Contact</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add New Contact</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
-                  <input type="text" placeholder="John" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+
+        {/* Show Create Quote button only on Quotes tab */}
+        {activeTab === 'quotes' && (
+          <Button size="sm" className="flex items-center gap-2" onClick={() => window.location.href = '/quote'}>
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Create Quote</span>
+          </Button>
+        )}
+
+        {/* Show Add Contact button only on Contacts tab */}
+        {activeTab === 'contacts' && (
+          <Dialog open={addContactOpen} onOpenChange={setAddContactOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Contact</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Contact</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
+                    <input type="text" placeholder="John" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
+                    <input type="text" placeholder="Doe" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
-                  <input type="text" placeholder="Doe" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Type</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                    <option value="customer">Customer</option>
+                    <option value="technician">Technician</option>
+                    <option value="distributor">Distributor</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                  <input type="email" placeholder="john.doe@example.com" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                  <input type="tel" placeholder="(555) 123-4567" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company (Optional)</label>
+                  <input type="text" placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setAddContactOpen(false)}>Cancel</Button>
+                  <Button onClick={() => setAddContactOpen(false)}>Add Contact</Button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Type</label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                  <option value="customer">Customer</option>
-                  <option value="technician">Technician</option>
-                  <option value="distributor">Distributor</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                <input type="email" placeholder="john.doe@example.com" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
-                <input type="tel" placeholder="(555) 123-4567" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company (Optional)</label>
-                <input type="text" placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setAddContactOpen(false)}>Cancel</Button>
-                <Button onClick={() => setAddContactOpen(false)}>Add Contact</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* CRM Tabs */}
@@ -543,7 +555,7 @@ export default function CRM() {
                     <span className="text-sm font-medium">Quotes → Work Orders</span>
                     <span className="text-lg font-bold text-gray-400">0%</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                     <div className="bg-blue-600 h-3 rounded-full transition-all" style={{width: '0%'}}></div>
                   </div>
                   <div className="text-xs text-gray-500 mt-2">No pending quotes</div>
@@ -558,7 +570,7 @@ export default function CRM() {
                     <span className="text-sm font-medium">Work Orders → Invoice</span>
                     <span className="text-lg font-bold text-gray-400">0%</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                     <div className="bg-green-600 h-3 rounded-full transition-all" style={{width: '0%'}}></div>
                   </div>
                   <div className="text-xs text-gray-500 mt-2">No work orders ready</div>
@@ -573,7 +585,7 @@ export default function CRM() {
                     <span className="text-sm font-medium">Invoice → Payment</span>
                     <span className="text-lg font-bold text-gray-400">0%</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                     <div className="bg-purple-600 h-3 rounded-full transition-all" style={{width: '0%'}}></div>
                   </div>
                   <div className="text-xs text-gray-500 mt-2">No invoices pending</div>
@@ -658,7 +670,7 @@ export default function CRM() {
                       <div className="font-medium text-lg mb-3 text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 pb-2">
                         {dayName}
                         {dayAppointments.length > 0 && (
-                          <Badge className="ml-2 bg-blue-100 text-blue-800">{dayAppointments.length}</Badge>
+                          <Badge className="ml-2 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{dayAppointments.length}</Badge>
                         )}
                       </div>
                       {dayAppointments.length === 0 ? (
@@ -688,7 +700,7 @@ export default function CRM() {
                               <div>
                                 <div className="text-xs text-gray-500 uppercase">When</div>
                                 <div className="font-medium">{apt.requestedTime || 'TBD'}</div>
-                                <Badge className={apt.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                                <Badge className={apt.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}>
                                   {apt.status}
                                 </Badge>
                               </div>
@@ -791,7 +803,10 @@ export default function CRM() {
         {/* Team Tab */}
         <TabsContent value="team" className="space-y-6">
           <TeamTable
-            onMessage={(member) => console.log('Message:', member.name)}
+            onMessage={(member) => {
+              // Navigate to communications tab to message team member
+              handleTabChange('communications');
+            }}
             onCall={(member) => member.phone && window.open(`tel:${member.phone}`)}
           />
         </TabsContent>
@@ -812,8 +827,8 @@ export default function CRM() {
                   }
                 }}
                 onMessageContact={(contact) => {
-                  // Handle messaging - could open a message dialog or navigate to chat
-                  console.log('Message contact:', contact);
+                  // Navigate to communications tab to message contact
+                  handleTabChange('communications');
                 }}
               />
             </CardContent>

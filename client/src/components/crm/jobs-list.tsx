@@ -48,8 +48,9 @@ interface JobsListProps {
 // Jobs data - production ready (empty until real data added from API)
 const mockJobs: Job[] = [];
 
-const locations = ['All Locations', 'San Diego', 'Phoenix', 'Los Angeles'];
-const installers = ['All Installers', 'Mike Johnson', 'David Wilson', 'Alex Turner', 'Unassigned'];
+// Filter options - locations and installers should be populated from API
+const locations = ['All Locations'];
+const installers = ['All Installers', 'Unassigned'];
 const paymentStatuses = ['All Payment Status', 'paid', 'unpaid', 'partial', 'invoiced'];
 
 export function JobsList({ statusFilter, onOpenJob }: JobsListProps) {

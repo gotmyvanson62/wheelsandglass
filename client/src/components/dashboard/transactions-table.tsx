@@ -67,15 +67,15 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'collected':
-        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Collected</Badge>;
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"><CheckCircle className="w-3 h-3 mr-1" />Collected</Badge>;
       case 'completed':
-        return <Badge className="bg-blue-100 text-blue-800"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
       case 'scheduled':
-        return <Badge className="bg-yellow-100 text-yellow-800">Scheduled</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Scheduled</Badge>;
       case 'partial':
-        return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="w-3 h-3 mr-1" />Partial</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"><AlertCircle className="w-3 h-3 mr-1" />Partial</Badge>;
       case 'overdue':
-        return <Badge className="bg-red-100 text-red-800"><AlertCircle className="w-3 h-3 mr-1" />Overdue</Badge>;
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"><AlertCircle className="w-3 h-3 mr-1" />Overdue</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -100,49 +100,29 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Contracted</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">${businessMetrics.totalContracted.toLocaleString()}</p>
-              </div>
-              <DollarSign className="w-8 h-8 text-blue-600" />
-            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Contracted</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">${businessMetrics.totalContracted.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Collected</p>
-                <p className="text-2xl font-bold text-green-600">${businessMetrics.totalCollected.toLocaleString()}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Collected</p>
+            <p className="text-2xl font-bold text-green-600">${businessMetrics.totalCollected.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Pending Collection</p>
-                <p className="text-2xl font-bold text-red-600">${businessMetrics.pendingCollection.toLocaleString()}</p>
-              </div>
-              <AlertCircle className="w-8 h-8 text-red-600" />
-            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Pending Collection</p>
+            <p className="text-2xl font-bold text-red-600">${businessMetrics.pendingCollection.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Collection Rate</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{businessMetrics.collectionRate}%</p>
-              </div>
-              <TrendingUp className={`w-8 h-8 ${businessMetrics.collectionRate >= '70' ? 'text-green-600' : 'text-red-600'}`} />
-            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Collection Rate</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{businessMetrics.collectionRate}%</p>
           </CardContent>
         </Card>
       </div>
@@ -230,7 +210,7 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
                               {collectionPercentage.toFixed(0)}%
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
                                 collectionPercentage >= 90 ? 'bg-green-500' :
@@ -334,7 +314,7 @@ export function TransactionsTable({ transactions, onViewDetails, onRetry, onExpo
                               <div className={`text-sm font-medium ${collectionStatus.color}`}>
                                 {collectionPercentage}% collected
                               </div>
-                              <div className="w-20 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                              <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                 <div
                                   className={`h-2 rounded-full ${
                                     collectionPercentage === '100' ? 'bg-green-500' :

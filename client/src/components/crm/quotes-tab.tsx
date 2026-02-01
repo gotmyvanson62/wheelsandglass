@@ -26,6 +26,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { formatDate } from '@/lib/date-utils';
+import { getLocationDisplayName } from '@/lib/location-helpers';
 
 interface QuoteSubmission {
   id: number;
@@ -200,57 +201,29 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">New Quotes</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.submitted}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">New Quotes</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.submitted}</p>
           </CardContent>
         </Card>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Last 24 Hours</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.last24Hours}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Last 24 Hours</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.last24Hours}</p>
           </CardContent>
         </Card>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Converted</p>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.converted}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Converted</p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.converted}</p>
           </CardContent>
         </Card>
 
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total Quotes</p>
-                <p className="text-2xl font-bold text-gray-700 dark:text-gray-200">{stats.total}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Quotes</p>
+            <p className="text-2xl font-bold text-gray-700 dark:text-gray-200">{stats.total}</p>
           </CardContent>
         </Card>
       </div>
@@ -379,7 +352,7 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
                       <td className="py-3 hidden lg:table-cell">
                         <div className="text-sm flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-gray-400" />
-                          {quote.location}
+                          {getLocationDisplayName(quote.location)}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{quote.zipCode}</div>
                       </td>
@@ -465,7 +438,7 @@ export function QuotesTab({ onOpenJobRecord }: QuotesTabProps) {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Location</p>
-                    <p className="font-medium dark:text-gray-200">{selectedQuote.location}, {selectedQuote.zipCode}</p>
+                    <p className="font-medium dark:text-gray-200">{getLocationDisplayName(selectedQuote.location)} {selectedQuote.zipCode}</p>
                   </div>
                 </div>
               </div>

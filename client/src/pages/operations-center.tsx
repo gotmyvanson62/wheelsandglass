@@ -237,7 +237,6 @@ export default function AnalyticsOperations() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
-                <DollarSign className="w-8 h-8 mx-auto mb-2 text-green-500" />
                 <div className="text-2xl font-bold text-green-600">
                   ${(stats.revenue / 100).toLocaleString()}
                 </div>
@@ -247,7 +246,6 @@ export default function AnalyticsOperations() {
 
             <Card>
               <CardContent className="p-4 text-center">
-                <Target className="w-8 h-8 mx-auto mb-2 text-blue-500" />
                 <div className="text-2xl font-bold text-blue-600">
                   {conversionStats.formSubmissions}
                 </div>
@@ -257,7 +255,6 @@ export default function AnalyticsOperations() {
 
             <Card>
               <CardContent className="p-4 text-center">
-                <CheckCircle className="w-8 h-8 mx-auto mb-2 text-purple-500" />
                 <div className="text-2xl font-bold text-purple-600">
                   {conversionStats.jobsCompleted}
                 </div>
@@ -267,7 +264,6 @@ export default function AnalyticsOperations() {
 
             <Card>
               <CardContent className="p-4 text-center">
-                <FileText className="w-8 h-8 mx-auto mb-2 text-orange-500" />
                 <div className="text-2xl font-bold text-orange-600">
                   {conversionStats.invoicesPaid}
                 </div>

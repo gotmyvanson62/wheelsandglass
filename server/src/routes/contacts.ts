@@ -37,7 +37,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     if (!type || type === 'customer') {
       try {
         const customers = await storage.getCustomers();
-        contacts.push(...customers.map(c => ({
+        contacts.push(...customers.map((c: any) => ({
           id: c.id,
           type: 'customer' as const,
           name: `${c.firstName} ${c.lastName}`,
@@ -55,10 +55,27 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
       }
     }
 
-    // Technicians and distributors will be fetched from database in production
-    // Currently returns empty for these types until real data is added
-    // if (!type || type === 'technician') { ... }
-    // if (!type || type === 'distributor') { ... }
+    // Fetch technicians if no type filter or type is technician
+    if (!type || type === 'technician') {
+      try {
+        const technicians = await storage.getActiveTechnicians();
+        contacts.push(...technicians.map((t: any) => ({
+          id: t.id,
+          type: 'technician' as const,
+          name: t.name,
+          email: t.email,
+          phone: t.phone || '',
+          status: (t.isActive ? 'active' : 'inactive') as 'active' | 'pending' | 'inactive',
+          specialty: Array.isArray(t.certifications) ? t.certifications.join(', ') : undefined,
+          city: Array.isArray(t.serviceAreas) && t.serviceAreas.length > 0 ? t.serviceAreas[0] : undefined,
+        })));
+      } catch (e) {
+        console.log('Could not fetch technicians:', e);
+      }
+    }
+
+    // Distributors are customers with accountType='distributor'
+    // They are already included in the customers fetch above
 
     // Apply search filter
     if (search && typeof search === 'string') {
@@ -113,16 +130,23 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 router.get('/stats', authMiddleware, async (req: Request, res: Response) => {
   try {
     let customerCount = 0;
+    let technicianCount = 0;
+    let distributorCount = 0;
+
     try {
       const customers = await storage.getCustomers();
-      customerCount = customers.length;
+      customerCount = customers.filter((c: any) => c.accountType !== 'distributor').length;
+      distributorCount = customers.filter((c: any) => c.accountType === 'distributor').length;
     } catch (e) {
       // Continue with 0
     }
 
-    // Technicians and distributors will be fetched from database in production
-    const technicianCount = 0;
-    const distributorCount = 0;
+    try {
+      const technicians = await storage.getActiveTechnicians();
+      technicianCount = technicians.length;
+    } catch (e) {
+      // Continue with 0
+    }
 
     res.json({
       total: customerCount + technicianCount + distributorCount,
@@ -187,13 +211,10 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         company: company || null,
         status: 'active',
         accountType: 'individual',
-        vehicleYear: null,
-        vehicleMake: null,
-        vehicleModel: null,
-        vin: null,
+        city: city || null,
+        state: state || null,
         totalJobs: 0,
         totalSpent: 0,
-        address: null,
         notes: null
       });
 
@@ -207,39 +228,27 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         status: 'active'
       };
     } else if (type === 'technician') {
-      // For technicians, we'll create a subcontractor record
-      const subcontractor = await storage.createSubcontractor({
-        companyName: company || name,
-        contactName: name,
+      // Create a technician record in the technicians table
+      const technician = await storage.createTechnician({
+        name: name,
         email: email || '',
-        phone: phone || '',
-        address: city && state ? `${city}, ${state}` : null,
-        city: city || null,
-        state: state || null,
-        zipCode: null,
-        serviceRadius: 50,
-        hourlyRate: null,
-        certifications: specialty ? [specialty] : [],
-        insuranceExpiry: null,
-        agreementSigned: false,
-        status: 'pending',
-        notes: null,
-        rating: null,
-        completedJobs: 0,
-        lastActive: null
+        phone: phone || null,
+        isActive: true,
+        certifications: specialty ? [specialty] : null,
+        serviceAreas: city && state ? [`${city}, ${state}`] : null,
+        maxDailyJobs: 6,
       });
 
       createdContact = {
-        id: subcontractor.id,
+        id: technician.id,
         type: 'technician',
-        name: subcontractor.contactName,
-        email: subcontractor.email,
-        phone: subcontractor.phone,
-        company: subcontractor.companyName,
-        city: subcontractor.city || undefined,
-        state: subcontractor.state || undefined,
+        name: technician.name,
+        email: technician.email,
+        phone: technician.phone || '',
+        city: city || undefined,
+        state: state || undefined,
         specialty: specialty || undefined,
-        status: 'pending'
+        status: technician.isActive ? 'active' : 'inactive'
       };
     } else if (type === 'distributor') {
       // For distributors, create as a customer with distributor account type
@@ -251,13 +260,10 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         company: company || name,
         status: 'active',
         accountType: 'distributor',
-        vehicleYear: null,
-        vehicleMake: null,
-        vehicleModel: null,
-        vin: null,
+        city: city || null,
+        state: state || null,
         totalJobs: 0,
         totalSpent: 0,
-        address: null,
         notes: 'Distributor contact'
       });
 

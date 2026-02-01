@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+import express, { Express, RequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
@@ -38,7 +38,7 @@ export function createApp(): Express {
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use('/api', limiter);
+  app.use('/api', limiter as unknown as RequestHandler);
 
   // Body parsing
   app.use(express.json({ limit: '10mb' }));

@@ -3,8 +3,8 @@
  * Orchestrates appointment scheduling between customer portal, Square Appointments, and Omega EDI
  */
 
-import { squareBookingsService, type SquareBookingData } from './square-appointments';
-import { OmegaEDIService } from './omega-edi';
+import { squareBookingsService, type SquareBookingData } from './square-appointments.js';
+import { OmegaEDIService } from './omega-edi.js';
 import { storage } from '../storage.js';
 
 export interface AppointmentRequest {
@@ -183,13 +183,13 @@ export class AppointmentCoordinatorService {
   async getAvailableSlots(date: string, technicianId?: string): Promise<string[]> {
     try {
       // Get available slots from Square Appointments
-      const squareSlots = await squareAppointmentsService.getAvailableSlots(date);
-      
+      const squareSlots = await squareBookingsService.getAvailableSlots(date);
+
       // Get technician availability from Omega EDI
       const omegaAvailability = await this.omegaService.getTechnicianAvailability(date, technicianId);
-      
+
       // Find intersection of available slots
-      const availableSlots = squareSlots.filter(slot => 
+      const availableSlots = squareSlots.filter((slot: any) =>
         omegaAvailability.includes(slot)
       );
       

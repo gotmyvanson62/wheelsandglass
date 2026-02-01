@@ -15,7 +15,7 @@ export default function QuotePage() {
                 Back to Home
               </Button>
             </Link>
-            <span className="text-lg font-semibold text-gray-900">Get a Quote</span>
+            <span className="text-lg font-semibold text-gray-900">Request Quote</span>
           </div>
         </div>
       </header>

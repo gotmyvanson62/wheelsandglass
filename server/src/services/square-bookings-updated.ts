@@ -132,9 +132,9 @@ export class SquareBookingsService {
       );
 
       return createResponse.data.customer.id;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Square customer creation error:', error);
-      throw new Error(`Failed to create/get Square customer: ${error.response?.data?.message || error.message}`);
+      throw new Error(`Failed to create/get Square customer: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
     }
   }
 
@@ -198,11 +198,11 @@ export class SquareBookingsService {
         message: 'Booking created successfully'
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Square booking creation error:', error);
       return {
         success: false,
-        message: `Failed to create booking: ${error.response?.data?.message || error.message}`
+        message: `Failed to create booking: ${error?.response?.data?.message || error?.message || 'Unknown error'}`
       };
     }
   }

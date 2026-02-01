@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage.js';
 import { quoSmsService } from '../services/quo-sms-service.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
-// GET /api/communications/sms - List SMS interactions
-router.get('/sms', async (_req: Request, res: Response) => {
+// GET /api/communications/sms - List SMS interactions (protected)
+router.get('/sms', authMiddleware, async (_req: Request, res: Response) => {
   try {
     const smsInteractions = await storage.getSmsInteractions();
     res.json({ success: true, data: smsInteractions });
@@ -15,8 +16,8 @@ router.get('/sms', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/communications/sms/:appointmentId - Get SMS for appointment
-router.get('/sms/:appointmentId', async (req: Request, res: Response) => {
+// GET /api/communications/sms/:appointmentId - Get SMS for appointment (protected)
+router.get('/sms/:appointmentId', authMiddleware, async (req: Request, res: Response) => {
   try {
     const appointmentId = parseInt(req.params.appointmentId);
     const smsInteractions = await storage.getSmsInteractionsByAppointment(appointmentId);
@@ -27,8 +28,8 @@ router.get('/sms/:appointmentId', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/communications/sms/send - Send SMS message via Quo (OpenPhone)
-router.post('/sms/send', async (req: Request, res: Response) => {
+// POST /api/communications/sms/send - Send SMS message via Quo (OpenPhone) (protected)
+router.post('/sms/send', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { to, body, appointmentId } = req.body;
 
@@ -44,7 +45,7 @@ router.post('/sms/send', async (req: Request, res: Response) => {
       appointmentId: appointmentId || null,
       phoneNumber: to,
       direction: 'outbound',
-      content: body,
+      message: body,
       status: 'pending',
       messageType: 'manual',
     });

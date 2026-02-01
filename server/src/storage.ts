@@ -14,6 +14,7 @@ import {
   subcontractorResponses,
   quoteSubmissions,
   customers,
+  technicians,
   type User,
   type InsertUser,
   type Transaction,
@@ -43,10 +44,12 @@ import {
   type QuoteSubmission,
   type InsertQuoteSubmission,
   type Customer,
-  type InsertCustomer
+  type InsertCustomer,
+  type Technician,
+  type InsertTechnician
 } from "@shared/schema";
-import { DatabaseStorage } from "./database-storage";
-import { PasswordService } from "./services/password-service";
+import { DatabaseStorage } from "./database-storage.js";
+import { PasswordService } from "./services/password-service.js";
 
 interface JobRecord {
   id: string;
@@ -178,7 +181,16 @@ export interface IStorage {
   getActiveSubcontractors(): Promise<Subcontractor[]>;
   createSubcontractor(subcontractor: InsertSubcontractor): Promise<Subcontractor>;
   updateSubcontractor(id: number, updates: Partial<Subcontractor>): Promise<Subcontractor | undefined>;
-  
+
+  // Technician methods - for contacts directory
+  getTechnician(id: number): Promise<Technician | undefined>;
+  getTechnicians(): Promise<Technician[]>;
+  getActiveTechnicians(): Promise<Technician[]>;
+  getTechnicianByPhone(phone: string): Promise<Technician | undefined>;
+  getTechnicianByEmail(email: string): Promise<Technician | undefined>;
+  createTechnician(technician: InsertTechnician): Promise<Technician>;
+  updateTechnician(id: number, updates: Partial<Technician>): Promise<Technician | undefined>;
+
   // Subcontractor availability methods
   getSubcontractorAvailability(subcontractorId: number, date: Date): Promise<SubcontractorAvailability | undefined>;
   createSubcontractorAvailability(availability: InsertSubcontractorAvailability): Promise<SubcontractorAvailability>;
@@ -198,6 +210,7 @@ export interface IStorage {
   createQuoteSubmission(quoteSubmission: InsertQuoteSubmission): Promise<QuoteSubmission>;
   getQuoteSubmissions(): Promise<QuoteSubmission[]>;
   updateQuoteSubmission(id: number, updates: Partial<QuoteSubmission>): Promise<QuoteSubmission | undefined>;
+  deleteQuoteSubmission(id: number): Promise<boolean>;
   getQuoteSubmissionsByCustomer(customerId: number): Promise<QuoteSubmission[]>;
 
   // Customer methods - for full quote-to-cash cycle tracking
@@ -207,6 +220,7 @@ export interface IStorage {
   getCustomers(): Promise<Customer[]>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   updateCustomer(id: number, updates: Partial<Customer>): Promise<Customer | undefined>;
+  deleteCustomer(id: number): Promise<boolean>;
   findOrCreateCustomer(email: string, phone: string, data: Partial<InsertCustomer>): Promise<Customer>;
   getCustomerHistory(customerId: number): Promise<{
     quotes: QuoteSubmission[];
@@ -249,6 +263,10 @@ export class MemStorage implements IStorage {
   private customerPhoneIndex: Map<string, number>; // normalized phone -> customerId
   private adminUsersMap: Map<number, any>; // Admin users storage
   private rpjSettings: any;
+  // Technician storage for contacts directory
+  private techniciansMap: Map<number, Technician>;
+  private technicianEmailIndex: Map<string, number>; // email -> technicianId
+  private technicianPhoneIndex: Map<string, number>; // normalized phone -> technicianId
 
   private currentUserId: number;
   private currentTransactionId: number;
@@ -258,6 +276,7 @@ export class MemStorage implements IStorage {
   private currentAppointmentId: number;
   private currentSmsInteractionId: number;
   private currentVehicleLookupId: number;
+  private currentRetryQueueId: number;
   private currentNagsPartId: number;
   private currentSubcontractorId: number;
   private currentAvailabilityId: number;
@@ -266,6 +285,7 @@ export class MemStorage implements IStorage {
   private currentQuoteSubmissionId: number;
   private currentCustomerId: number;
   private currentAdminUserId: number;
+  private currentTechnicianId: number;
 
   constructor() {
     this.users = new Map();
@@ -287,6 +307,10 @@ export class MemStorage implements IStorage {
     this.customerEmailIndex = new Map();
     this.customerPhoneIndex = new Map();
     this.adminUsersMap = new Map();
+    // Initialize technician storage
+    this.techniciansMap = new Map();
+    this.technicianEmailIndex = new Map();
+    this.technicianPhoneIndex = new Map();
 
     this.currentUserId = 1;
     this.currentTransactionId = 1;
@@ -296,6 +320,7 @@ export class MemStorage implements IStorage {
     this.currentAppointmentId = 1;
     this.currentSmsInteractionId = 1;
     this.currentVehicleLookupId = 1;
+    this.currentRetryQueueId = 1;
     this.currentNagsPartId = 1;
     this.currentSubcontractorId = 1;
     this.currentAvailabilityId = 1;
@@ -304,11 +329,12 @@ export class MemStorage implements IStorage {
     this.currentQuoteSubmissionId = 1;
     this.currentCustomerId = 1;
     this.currentAdminUserId = 2; // Start at 2 since we'll create a default admin with ID 1
+    this.currentTechnicianId = 1;
 
     // Initialize default configurations and data
     this.initializeDefaultConfigurations();
     this.initializeDefaultFieldMappings();
-    this.initializeDefaultSubcontractors();
+    // NOTE: Seed subcontractors removed - technicians must be enrolled through the system
     this.initializeDefaultRpjSettings();
     this.initializeDefaultAdminUser();
   }
@@ -433,6 +459,7 @@ export class MemStorage implements IStorage {
       ...transaction,
       id,
       timestamp: new Date(),
+      customerId: transaction.customerId ?? null,
       retryCount: transaction.retryCount || 0,
       lastRetry: null,
       customerPhone: transaction.customerPhone || null,
@@ -447,9 +474,11 @@ export class MemStorage implements IStorage {
       squareBookingId: transaction.squareBookingId || null,
       squarePaymentLinkId: transaction.squarePaymentLinkId || null,
       finalPrice: transaction.finalPrice || null,
-      paymentStatus: transaction.paymentStatus || 'pending',
+      paymentStatus: (transaction.paymentStatus || 'pending') as 'pending' | 'paid' | 'failed' | null,
       errorMessage: transaction.errorMessage || null,
-    };
+      tags: transaction.tags ?? null,
+      sourceType: transaction.sourceType ?? null,
+    } as Transaction;
     this.transactions.set(id, newTransaction);
     return newTransaction;
   }
@@ -461,10 +490,21 @@ export class MemStorage implements IStorage {
   async updateTransaction(id: number, updates: Partial<Transaction>): Promise<Transaction | undefined> {
     const transaction = this.transactions.get(id);
     if (!transaction) return undefined;
-    
-    const updated = { ...transaction, ...updates };
+    // If status is being updated, append to statusHistory
+    const updated: any = { ...transaction };
+    if ((updates as any).status) {
+      const history = Array.isArray(transaction.statusHistory as any) ? (transaction.statusHistory as any) : [];
+      const newEntry = {
+        status: (updates as any).status,
+        timestamp: new Date().toISOString(),
+        triggeredBy: (updates as any).triggeredBy || 'system'
+      };
+      updated.statusHistory = [...history, newEntry];
+    }
+
+    Object.assign(updated, updates);
     this.transactions.set(id, updated);
-    return updated;
+    return updated as Transaction;
   }
 
   async getTransactions(filters?: { status?: string; limit?: number; offset?: number }): Promise<Transaction[]> {
@@ -576,11 +616,12 @@ export class MemStorage implements IStorage {
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
     const id = this.currentAppointmentId++;
-    const newAppointment: Appointment = {
+    const newAppointment = {
       ...appointment,
       id,
       createdAt: new Date(),
       updatedAt: new Date(),
+      customerId: appointment.customerId ?? null,
       customerPhone: appointment.customerPhone || null,
       transactionId: appointment.transactionId || null,
       scheduledDate: appointment.scheduledDate || null,
@@ -589,7 +630,7 @@ export class MemStorage implements IStorage {
       omegaAppointmentId: appointment.omegaAppointmentId || null,
       instructions: appointment.instructions || null,
       calendarInvitationSent: appointment.calendarInvitationSent || false,
-    };
+    } as Appointment;
     this.appointments.set(id, newAppointment);
     return newAppointment;
   }
@@ -634,56 +675,52 @@ export class MemStorage implements IStorage {
     return newInteraction;
   }
 
-  private initializeDefaultSubcontractors() {
-    const defaultSubcontractors = [
-      {
-        name: 'Metro Glass Solutions',
-        email: 'dispatch@metroglass.com',
-        phone: '(555) 123-4567',
-        serviceAreas: ['10001', '10002', '10003', '10010', '10011'],
-        specialties: ['windshield', 'side_window', 'rear_glass'],
-        rating: 5,
-        isActive: true,
-        maxJobsPerDay: 8,
-        preferredContactMethod: 'email'
-      },
-      {
-        name: 'Quick Auto Glass',
-        email: 'jobs@quickautoglass.com',
-        phone: '(555) 234-5678',
-        serviceAreas: ['10020', '10021', '10022', '10030'],
-        specialties: ['windshield', 'quarter_glass'],
-        rating: 4,
-        isActive: true,
-        maxJobsPerDay: 6,
-        preferredContactMethod: 'phone'
-      }
-    ];
-
-    defaultSubcontractors.forEach(sub => {
-      const subWithId = { ...sub, id: this.currentSubcontractorId++, createdAt: new Date(), updatedAt: new Date() };
-      this.subcontractors.set(subWithId.id, subWithId);
-
-      // Add default availability for next 30 days
-      for (let i = 0; i < 30; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const availability = {
-          id: this.currentAvailabilityId++,
-          subcontractorId: subWithId.id,
-          date,
-          timeSlots: ['09:00', '13:00', '15:00'],
-          maxJobs: sub.maxJobsPerDay,
-          currentJobs: 0,
-          isAvailable: true,
-          notes: null,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        this.subcontractorAvailability.set(availability.id, availability);
-      }
-    });
+  // Retry queue methods
+  async createRetryQueueEntry(entry: { operation: string; payload: any; nextAttemptAt?: Date | null; maxAttempts?: number; }): Promise<any> {
+    const id = this.currentRetryQueueId++;
+    const newEntry = {
+      id,
+      operation: entry.operation,
+      payload: entry.payload,
+      attempts: 0,
+      maxAttempts: entry.maxAttempts ?? 5,
+      nextAttemptAt: entry.nextAttemptAt || new Date(),
+      lastError: null,
+      isDeadLetter: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    // store by id
+    (this as any).retryQueue = (this as any).retryQueue || new Map();
+    (this as any).retryQueue.set(id, newEntry);
+    return newEntry;
   }
+
+  async getPendingRetryQueueEntries(limit: number = 50): Promise<any[]> {
+    const now = new Date();
+    const map: Map<number, any> = (this as any).retryQueue || new Map();
+    return Array.from(map.values()).filter(e => !e.isDeadLetter && new Date(e.nextAttemptAt) <= now).slice(0, limit);
+  }
+
+  async updateRetryQueueEntry(id: number, updates: Partial<any>): Promise<void> {
+    const map: Map<number, any> = (this as any).retryQueue || new Map();
+    const entry = map.get(id);
+    if (!entry) return;
+    const updated = { ...entry, ...updates, updatedAt: new Date() };
+    map.set(id, updated);
+  }
+
+  async moveRetryEntryToDeadLetter(id: number, error?: string): Promise<void> {
+    const map: Map<number, any> = (this as any).retryQueue || new Map();
+    const entry = map.get(id);
+    if (!entry) return;
+    entry.isDeadLetter = true;
+    entry.lastError = error || entry.lastError;
+    entry.updatedAt = new Date();
+    map.set(id, entry);
+  }
+
+  // NOTE: initializeDefaultSubcontractors() removed - technicians must be enrolled through the system
 
   // VIN lookup methods
   async getVehicleLookup(vin: string): Promise<VehicleLookup | undefined> {
@@ -791,9 +828,95 @@ export class MemStorage implements IStorage {
   async updateSubcontractor(id: number, updates: Partial<Subcontractor>): Promise<Subcontractor | undefined> {
     const subcontractor = this.subcontractors.get(id);
     if (!subcontractor) return undefined;
-    
+
     const updated = { ...subcontractor, ...updates, updatedAt: new Date() };
     this.subcontractors.set(id, updated);
+    return updated;
+  }
+
+  // Technician methods - for contacts directory
+  async getTechnician(id: number): Promise<Technician | undefined> {
+    return this.techniciansMap.get(id);
+  }
+
+  async getTechnicians(): Promise<Technician[]> {
+    return Array.from(this.techniciansMap.values()).sort((a, b) =>
+      (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+    );
+  }
+
+  async getActiveTechnicians(): Promise<Technician[]> {
+    return Array.from(this.techniciansMap.values())
+      .filter(tech => tech.isActive)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getTechnicianByPhone(phone: string): Promise<Technician | undefined> {
+    const normalizedPhone = this.normalizePhone(phone);
+    if (!normalizedPhone) return undefined;
+    const technicianId = this.technicianPhoneIndex.get(normalizedPhone);
+    return technicianId ? this.techniciansMap.get(technicianId) : undefined;
+  }
+
+  async getTechnicianByEmail(email: string): Promise<Technician | undefined> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const technicianId = this.technicianEmailIndex.get(normalizedEmail);
+    return technicianId ? this.techniciansMap.get(technicianId) : undefined;
+  }
+
+  async createTechnician(technician: InsertTechnician): Promise<Technician> {
+    const id = this.currentTechnicianId++;
+    const newTechnician: Technician = {
+      ...technician,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: technician.isActive !== undefined ? technician.isActive : true,
+      phone: technician.phone || null,
+      hireDate: technician.hireDate || null,
+      terminationDate: technician.terminationDate || null,
+      certifications: technician.certifications || null,
+      serviceAreas: technician.serviceAreas || null,
+      maxDailyJobs: technician.maxDailyJobs || 6,
+    };
+    this.techniciansMap.set(id, newTechnician);
+
+    // Build indexes for fast lookups
+    if (newTechnician.email) {
+      this.technicianEmailIndex.set(newTechnician.email.toLowerCase().trim(), id);
+    }
+    if (newTechnician.phone) {
+      const normalizedPhone = this.normalizePhone(newTechnician.phone);
+      if (normalizedPhone) {
+        this.technicianPhoneIndex.set(normalizedPhone, id);
+      }
+    }
+
+    return newTechnician;
+  }
+
+  async updateTechnician(id: number, updates: Partial<Technician>): Promise<Technician | undefined> {
+    const technician = this.techniciansMap.get(id);
+    if (!technician) return undefined;
+
+    // Update indexes if email or phone changed
+    if (updates.email && updates.email !== technician.email) {
+      if (technician.email) {
+        this.technicianEmailIndex.delete(technician.email.toLowerCase().trim());
+      }
+      this.technicianEmailIndex.set(updates.email.toLowerCase().trim(), id);
+    }
+    if (updates.phone && updates.phone !== technician.phone) {
+      if (technician.phone) {
+        const oldNormalized = this.normalizePhone(technician.phone);
+        if (oldNormalized) this.technicianPhoneIndex.delete(oldNormalized);
+      }
+      const newNormalized = this.normalizePhone(updates.phone);
+      if (newNormalized) this.technicianPhoneIndex.set(newNormalized, id);
+    }
+
+    const updated = { ...technician, ...updates, updatedAt: new Date() };
+    this.techniciansMap.set(id, updated);
     return updated;
   }
 
@@ -961,12 +1084,14 @@ export class MemStorage implements IStorage {
   // Quote submission methods
   async createQuoteSubmission(quoteSubmission: InsertQuoteSubmission): Promise<QuoteSubmission> {
     const id = this.currentQuoteSubmissionId++;
-    const newQuoteSubmission: QuoteSubmission = {
+    const newQuoteSubmission = {
       id,
       timestamp: new Date(),
       processedAt: null,
       ...quoteSubmission,
-    };
+      vin: quoteSubmission.vin ?? null,
+      customerId: quoteSubmission.customerId ?? null,
+    } as QuoteSubmission;
 
     this.quoteSubmissions.set(id, newQuoteSubmission);
     return newQuoteSubmission;
@@ -979,6 +1104,11 @@ export class MemStorage implements IStorage {
     const updated = { ...submission, ...updates };
     this.quoteSubmissions.set(id, updated);
     return updated;
+  }
+
+  async deleteQuoteSubmission(id: number): Promise<boolean> {
+    if (!this.quoteSubmissions.has(id)) return false;
+    return this.quoteSubmissions.delete(id);
   }
 
   async getQuoteSubmissionsByCustomer(customerId: number): Promise<QuoteSubmission[]> {
@@ -1032,6 +1162,7 @@ export class MemStorage implements IStorage {
       id,
       createdAt: new Date(),
       updatedAt: new Date(),
+      status: customer.status ?? null,
       secondaryEmail: customer.secondaryEmail || null,
       alternatePhone: customer.alternatePhone || null,
       address: customer.address || null,
@@ -1048,7 +1179,7 @@ export class MemStorage implements IStorage {
       totalJobs: customer.totalJobs || 0,
       totalSpent: customer.totalSpent || 0,
       lastJobDate: customer.lastJobDate || null,
-    };
+    } as Customer;
     this.customersMap.set(id, newCustomer);
 
     // Add to indexes for O(1) lookups
@@ -1084,6 +1215,20 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async deleteCustomer(id: number): Promise<boolean> {
+    const customer = this.customersMap.get(id);
+    if (!customer) return false;
+
+    // Remove from indexes
+    this.customerEmailIndex.delete(this.normalizeEmail(customer.primaryEmail));
+    if (customer.primaryPhone) {
+      const normalizedPhone = this.normalizePhone(customer.primaryPhone);
+      if (normalizedPhone) this.customerPhoneIndex.delete(normalizedPhone);
+    }
+
+    return this.customersMap.delete(id);
+  }
+
   /**
    * Recalculate customer totals (totalSpent, totalJobs, lastJobDate) from their transactions
    * Called after payment updates to keep customer profile accurate
@@ -1099,7 +1244,7 @@ export class MemStorage implements IStorage {
 
     // Calculate totals
     const totalSpent = customerTransactions.reduce(
-      (sum, t) => sum + (t.finalPrice || t.amount || 27500), // Default $275 if no amount
+      (sum, t) => sum + (t.finalPrice || 27500), // Default $275 if no amount
       0
     );
     const totalJobs = customerTransactions.length;
@@ -1107,7 +1252,7 @@ export class MemStorage implements IStorage {
     // Find most recent job date
     let lastJobDate: Date | null = null;
     if (customerTransactions.length > 0) {
-      const timestamps = customerTransactions.map(t => new Date(t.timestamp || t.createdAt).getTime());
+      const timestamps = customerTransactions.map(t => new Date(t.timestamp).getTime());
       lastJobDate = new Date(Math.max(...timestamps));
     }
 
@@ -1115,7 +1260,7 @@ export class MemStorage implements IStorage {
     return await this.updateCustomer(customerId, {
       totalSpent,
       totalJobs,
-      lastJobDate: lastJobDate?.toISOString() || null,
+      lastJobDate,
     });
   }
 
@@ -1211,87 +1356,99 @@ export class MemStorage implements IStorage {
   }
 
   async getJobRecord(jobId: string): Promise<JobRecord | undefined> {
-    // For demo purposes, return mock data matching Omega EDI format
-    // In production, this would query Omega EDI API or database
-    const mockJobRecord: JobRecord = {
+    // Query real transaction data from database
+    const transactionId = parseInt(jobId);
+    if (isNaN(transactionId)) {
+      return undefined;
+    }
+
+    const transaction = await this.getTransaction(transactionId);
+    if (!transaction) {
+      return undefined;
+    }
+
+    // Get associated customer if exists
+    const customer = transaction.customerId
+      ? await this.getCustomer(transaction.customerId)
+      : null;
+
+    // Get associated appointment if exists
+    const appointments = await this.getAppointments();
+    const appointment = appointments.find((apt: any) => apt.transactionId === transactionId);
+
+    // Parse form data if available
+    const formData = transaction.formData as any || {};
+
+    // Build job record from real data
+    const jobRecord: JobRecord = {
       id: jobId,
       jobNumber: jobId,
-      customer: {
-        firstName: 'Elan',
-        lastName: 'Okonsky',
-        email: 'elan@expressautoglassinc.com',
-        phone: '760-715-3400',
-        address: '371 S Rancho Santa Fe Rd',
-        city: 'San Marcos',
-        state: 'California',
-        postalCode: '92078'
+      customer: customer ? {
+        firstName: customer.firstName || '',
+        lastName: customer.lastName || '',
+        email: customer.primaryEmail || '',
+        phone: customer.primaryPhone || '',
+        address: customer.address || '',
+        city: customer.city || '',
+        state: customer.state || '',
+        postalCode: customer.postalCode || ''
+      } : {
+        firstName: transaction.customerName?.split(' ')[0] || '',
+        lastName: transaction.customerName?.split(' ').slice(1).join(' ') || '',
+        email: transaction.customerEmail || '',
+        phone: transaction.customerPhone || '',
+        address: formData.address || '',
+        city: formData.city || '',
+        state: formData.state || '',
+        postalCode: formData.zipCode || ''
       },
       vehicle: {
-        year: '2008',
-        make: 'Infiniti',
-        model: 'G35',
-        description: '4 Door Sedan',
-        vin: 'JNKBV61E68M215098',
-        licensePlate: '6EQY319-CA',
-        odometer: '0'
+        year: transaction.vehicleYear || '',
+        make: transaction.vehicleMake || '',
+        model: transaction.vehicleModel || '',
+        description: formData.vehicleDescription || '',
+        vin: transaction.vehicleVin || '',
+        licensePlate: formData.licensePlate || '',
+        odometer: formData.odometer || '0'
       },
-      appointment: {
-        date: '1/25/2022',
-        time: '9:12 PM',
+      appointment: appointment ? {
+        date: appointment.requestedDate || '',
+        time: appointment.requestedTime || '',
+        type: formData.serviceType || 'Mobile',
+        status: appointment.status || 'Pending',
+        completedDate: appointment.scheduledDate?.toISOString() || ''
+      } : {
+        date: '',
+        time: '',
         type: 'Mobile',
-        status: 'Completed',
-        completedDate: '1/25/2022, 9:12:11 PM'
+        status: transaction.status || 'Pending',
+        completedDate: ''
       },
       invoice: {
-        items: [
-          {
-            sku: 'FW02717GBYN',
-            description: 'Windshield (Solar)',
-            listPrice: 438.60,
-            extendedPrice: 438.60,
-            discount: 0.00,
-            cost: 0.00,
-            quantity: 1.00,
-            totalPrice: 438.60
-          }
-        ],
-        subtotal: 588.60,
-        tax: 0.00,
-        total: 588.60,
-        grossMargin: 0
+        items: formData.lineItems || [],
+        subtotal: formData.subtotal || 0,
+        tax: formData.tax || 0,
+        total: formData.total || 0,
+        grossMargin: formData.grossMargin || 0
       },
       billing: {
         account: 'Wheels and Glass',
-        accountPhone: '619-320-5730',
-        accountAddress: '371 S Rancho Santa Fe Rd San Marcos, CA 92078',
-        pricingProfile: 'Discount | San Diego'
+        accountPhone: '',
+        accountAddress: '',
+        pricingProfile: formData.pricingProfile || 'Standard'
       },
       jobInfo: {
-        csr: 'Josue Andrade',
-        location: '#1 Andrade Auto Glass',
-        campaign: 'Local Vendor',
-        status: 'Archived',
-        tags: ['Ready to Install', 'Test']
+        csr: formData.csr || '',
+        location: formData.location || '',
+        campaign: formData.campaign || '',
+        status: transaction.status || 'Pending',
+        tags: formData.tags || []
       },
-      payments: [
-        {
-          amount: 588.60,
-          method: 'Cash EO - Test',
-          date: '2022-01-25 21:12',
-          status: 'Complete'
-        }
-      ],
-      notes: [
-        {
-          text: 'Test WO for Statement(s)',
-          author: 'Josue Andrade',
-          date: '2022-01-25 20:52:31',
-          visibleToCustomer: true
-        }
-      ]
+      payments: formData.payments || [],
+      notes: formData.notes || []
     };
 
-    return mockJobRecord;
+    return jobRecord;
   }
 }
 
