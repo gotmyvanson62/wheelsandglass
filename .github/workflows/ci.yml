@@ -89,3 +89,39 @@ jobs:
       - name: Check TypeScript (server)
         run: cd server && npx tsc --noEmit || true
         continue-on-error: true
+
+  nags-e2e:
+    name: NAGS E2E (safe)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build shared and server
+        run: |
+          npm --workspace=shared run build
+          npm --workspace=server run build
+      - name: Run server unit tests
+        run: npm --workspace=server test --if-present
+      - name: Run safe VIN script
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/testdb
+          SAFE_VIN: '1HGCM82633A004352'
+        run: npx tsx server/scripts/safe-vin-run.ts
