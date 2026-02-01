@@ -120,6 +120,8 @@ jobs:
           npm --workspace=server run build
       - name: Run migrations (server)
         run: npm --workspace=server run db:migrate
+      - name: Ensure retry table exists
+        run: npx tsx server/scripts/apply-retry-table.ts
       - name: Run server unit tests
         run: npm --workspace=server test --if-present
       - name: Run safe VIN script

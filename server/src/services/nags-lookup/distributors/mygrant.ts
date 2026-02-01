@@ -1,16 +1,35 @@
 import { BaseDistributorScraper } from './base-distributor.js';
 import type { VehicleInfo, GlassPartResult } from '../types.js';
+import { db } from '../../../db/connection.js';
+import { distributorCredentials } from '../../../db/schema/nags-cache.js';
+import { eq } from 'drizzle-orm';
+
+const ENABLE_MYGRANT = (process.env.ENABLE_MYGRANT_SCRAPER || 'false').toLowerCase() === 'true';
 
 export class MygrantScraper extends BaseDistributorScraper {
   constructor() {
     super('mygrant', 'https://www.mygrantglass.com');
   }
 
-  async login(username: string, encryptedPassword: string): Promise<void> {
-    // Placeholder: distributor credentials are stored encrypted in DB
+  async login(loginUrl: string, encryptedPassword: string, username?: string): Promise<void> {
+    // Decrypt password and perform a basic login POST (portal-specific adapt required)
     const password = this.decryptPassword(encryptedPassword);
-    // Implement login flow per portal (this is a template)
-    this.sessionToken = null;
+    try {
+      const resp = await fetch(loginUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username || '', password })
+      });
+      if (resp.ok) {
+        // some portals return JSON with a token
+        const j: any = await resp.json().catch(() => ({}));
+        this.sessionToken = (j && (j.token || j.session)) || null;
+      } else {
+        this.sessionToken = null;
+      }
+    } catch (err) {
+      this.sessionToken = null;
+    }
     this.sessionExpiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000);
   }
 
@@ -36,10 +55,18 @@ export class MygrantScraper extends BaseDistributorScraper {
     await this.politeDelay();
 
     // If session not valid, attempt a login flow (no-op here)
+    if (!ENABLE_MYGRANT) return [];
     if (!this.isSessionValid()) {
-      // In practice, fetch credentials from DB and call login
-      this.sessionToken = null;
-      this.sessionExpiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000);
+      try {
+        if (!db) throw new Error('DB not initialized');
+        const rows = await db.select().from(distributorCredentials).where(eq(distributorCredentials.distributor, 'mygrant')).limit(1);
+        const creds = rows[0];
+        if (creds) {
+          await this.login(creds.loginUrl, creds.passwordEncrypted, creds.username);
+        }
+      } catch (err) {
+        console.warn('[MygrantScraper] failed to load credentials or login:', err);
+      }
     }
 
     // Attempt a JSON-based VIN lookup if the portal supports it
