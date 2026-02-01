@@ -118,6 +118,8 @@ jobs:
         run: |
           npm --workspace=shared run build
           npm --workspace=server run build
+      - name: Run migrations (server)
+        run: npm --workspace=server run db:migrate
       - name: Run server unit tests
         run: npm --workspace=server test --if-present
       - name: Run safe VIN script
