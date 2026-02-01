@@ -36,6 +36,9 @@ export class MygrantScraper extends BaseDistributorScraper {
   // Simple rate-limiter: ensure at least `minDelayMs` between requests
   private lastRequestAt: number | null = null;
   private minDelayMs = 6000; // 6 seconds between requests to be polite
+  private sessionCookie: string | null = null;
+  private maxRetries = 3;
+  private backoffBase = 800;
 
   private async politeDelay() {
     const now = Date.now();
@@ -69,37 +72,61 @@ export class MygrantScraper extends BaseDistributorScraper {
       }
     }
 
-    // Attempt a JSON-based VIN lookup if the portal supports it
+    // Attempt a JSON-based VIN lookup with retries and backoff
     try {
       const vin = vehicle.vinPattern + '000000';
-      const resp = await fetch(`${this.baseUrl}/api/vin-lookup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': `Mozilla/5.0 (compatible; WheelsAndGlass/1.0; +https://example.com)`
-        },
-        body: JSON.stringify({ vin })
-      });
+      let attempt = 0;
+      let lastErr: any = null;
+      while (attempt < this.maxRetries) {
+        attempt += 1;
+        try {
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'User-Agent': `Mozilla/5.0 (compatible; WheelsAndGlass/1.0; +https://example.com)`
+          };
+          if (this.sessionCookie) headers['Cookie'] = this.sessionCookie;
 
-      if (!resp.ok) return [];
-
-      const data: any = await resp.json();
-      const results: GlassPartResult[] = [];
-
-      for (const item of data.parts || []) {
-        const position = this.mapMygrantPosition(item.glassType || item.position || 'windshield');
-        if (positions.includes(position) || positions.includes('all')) {
-          results.push({
-            nagsPartNumber: item.nagsNumber || item.partNumber || '',
-            nagsPartNumberAlt: item.alternateNags || undefined,
-            glassPosition: position,
-            features: this.parseFeatures(item.features || item.options || ''),
-            price: item.price ? { cost: Math.round(item.price * 100), source: 'mygrant', asOfDate: new Date() } : undefined,
+          const resp = await fetch(`${this.baseUrl}/api/vin-lookup`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ vin })
           });
+
+          if (!resp.ok) {
+            lastErr = new Error(`HTTP ${resp.status}`);
+            throw lastErr;
+          }
+
+          // capture Set-Cookie header if present
+          const sc = resp.headers.get('set-cookie') || resp.headers.get('Set-Cookie');
+          if (sc) this.sessionCookie = sc;
+
+          const data: any = await resp.json();
+          const results: GlassPartResult[] = [];
+
+          for (const item of data.parts || []) {
+            const position = this.mapMygrantPosition(item.glassType || item.position || 'windshield');
+            if (positions.includes(position) || positions.includes('all')) {
+              results.push({
+                nagsPartNumber: item.nagsNumber || item.partNumber || '',
+                nagsPartNumberAlt: item.alternateNags || undefined,
+                glassPosition: position,
+                features: this.parseFeatures(item.features || item.options || ''),
+                price: item.price ? { cost: Math.round(item.price * 100), source: 'mygrant', asOfDate: new Date() } : undefined,
+              });
+            }
+          }
+
+          return results;
+        } catch (err) {
+          lastErr = err;
+          const delay = this.backoffBase * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 300);
+          await new Promise((r) => setTimeout(r, delay));
         }
       }
 
-      return results;
+      console.warn('[MygrantScraper] Lookup failed after retries:', lastErr);
+      return [];
     } catch (err) {
       console.warn('[MygrantScraper] Lookup failed:', err);
       return [];

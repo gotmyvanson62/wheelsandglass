@@ -21,3 +21,22 @@ jobs:
         run: |
           npm ci
           npx tsx server/scripts/check-retry-queue.ts
+  alert:
+    name: Alert on failure
+    needs: monitor
+    if: ${{ needs.monitor.result == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Retry Queue Threshold Exceeded',
+              body: `The scheduled retry queue monitor reported a failure.\n\nRun: ${runUrl}\n\nPlease investigate retry queue growth and dead-letter entries.`
+            });
