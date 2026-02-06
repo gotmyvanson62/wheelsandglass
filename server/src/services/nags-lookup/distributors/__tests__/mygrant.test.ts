@@ -30,8 +30,6 @@ describe('MygrantScraper', () => {
     (scraper as any).isSessionValid = () => true;
     const vehicle = { vinPattern: '1HGCM82633' } as any;
     const results = await scraper.lookupParts(vehicle, ['windshield']);
-    console.log('[TEST DEBUG] mygrant results:', results);
-
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].nagsPartNumber).toBe('NAGS-123');
     expect(results[0].glassPosition).toBe('windshield');
