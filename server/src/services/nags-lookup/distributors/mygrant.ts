@@ -4,7 +4,6 @@ import { db } from '../../../db/connection.js';
 import { distributorCredentials } from '../../../db/schema/nags-cache.js';
 import { eq } from 'drizzle-orm';
 
-const ENABLE_MYGRANT = (process.env.ENABLE_MYGRANT_SCRAPER || 'false').toLowerCase() === 'true';
 
 export class MygrantScraper extends BaseDistributorScraper {
   constructor() {
@@ -57,8 +56,9 @@ export class MygrantScraper extends BaseDistributorScraper {
     // Respect polite scraping rules and simulate human-like behavior
     await this.politeDelay();
 
-    // If session not valid, attempt a login flow (no-op here)
-    if (!ENABLE_MYGRANT) return [];
+    // Check feature flag at runtime so tests can toggle it before import
+    const enabled = (process.env.ENABLE_MYGRANT_SCRAPER || 'false').toLowerCase() === 'true';
+    if (!enabled) return [];
     if (!this.isSessionValid()) {
       try {
         if (!db) throw new Error('DB not initialized');
