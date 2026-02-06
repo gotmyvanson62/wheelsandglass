@@ -1,3 +1,5 @@
+// Ensure feature flag is enabled before the module is imported (module-level constant)
+process.env.ENABLE_MYGRANT_SCRAPER = 'true';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MygrantScraper } from '../mygrant.js';
 
