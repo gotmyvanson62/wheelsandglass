@@ -6,6 +6,7 @@ describe('MygrantScraper', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
+    process.env.ENABLE_MYGRANT_SCRAPER = 'true';
   });
 
   afterEach(() => {
