@@ -25,6 +25,9 @@ describe('MygrantScraper', () => {
     globalThis.fetch = vi.fn(async () => fakeResp) as any;
 
     const scraper = new MygrantScraper();
+    // Bypass polite delay and DB-dependent session validation in unit test
+    (scraper as any).politeDelay = async () => {};
+    (scraper as any).isSessionValid = () => true;
     const vehicle = { vinPattern: '1HGCM82633' } as any;
     const results = await scraper.lookupParts(vehicle, ['windshield']);
     console.log('[TEST DEBUG] mygrant results:', results);
