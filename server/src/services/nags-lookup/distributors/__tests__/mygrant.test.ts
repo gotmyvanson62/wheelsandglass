@@ -18,6 +18,7 @@ describe('MygrantScraper', () => {
   it('parses parts from a fake API response', async () => {
     const fakeResp = {
       ok: true,
+      headers: { get: (_: string) => null },
       json: async () => ({ parts: [{ nagsNumber: 'NAGS-123', glassType: 'windshield', price: 45.5 }] })
     } as any;
 
